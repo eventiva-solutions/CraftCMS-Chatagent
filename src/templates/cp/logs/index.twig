@@ -100,7 +100,7 @@
                         <td class="thin rightalign">
                             <form method="post" onsubmit="return confirm('Session wirklich löschen?')">
                                 {{ csrfInput() }}
-                                <input type="hidden" name="action" value="chatbot/logs/delete">
+                                <input type="hidden" name="action" value="chatagent/logs/delete">
                                 <input type="hidden" name="id" value="{{ session.id }}">
                                 <button type="submit" class="btn small">Löschen</button>
                             </form>

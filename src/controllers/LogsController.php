@@ -187,6 +187,6 @@ class LogsController extends Controller
             Craft::$app->getSession()->setError('Fehler beim Speichern.');
         }
 
-        return $this->redirect('chatbot/settings');
+        return $this->redirect('chatagent/settings');
     }
 }

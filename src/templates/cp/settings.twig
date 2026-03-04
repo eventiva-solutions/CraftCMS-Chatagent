@@ -8,8 +8,8 @@
 <div id="chatbot-settings">
     <form method="post" accept-charset="UTF-8">
         {{ csrfInput() }}
-        {{ redirectInput('chatbot/settings') }}
-        <input type="hidden" name="action" value="chatbot/logs/save-settings">
+        {{ redirectInput('chatagent/settings') }}
+        <input type="hidden" name="action" value="chatagent/logs/save-settings">
 
         <nav class="custom-tabs" style="display:flex; border-bottom: 2px solid #e3e5e8; margin-bottom: 24px; gap: 0;">
             <button type="button" class="custom-tab sel" data-target="tab-general">Allgemein</button>
