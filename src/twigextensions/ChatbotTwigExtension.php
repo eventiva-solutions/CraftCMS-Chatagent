@@ -19,7 +19,7 @@ class ChatbotTwigExtension extends AbstractExtension
 
     public function renderWidget(): string
     {
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
 
         if (!$settings['enabled']) {
             return '';
