@@ -1,0 +1,25 @@
+<style>
+.chatbot-button,
+.chatbot-container {
+    --chatbot-primary: {{ settings.primaryColor }};
+    --chatbot-user-msg: {{ settings.primaryColor }};
+    --chatbot-logo-bg: {{ settings.logoBgColor }};
+}
+</style>
+<script>
+var ChatbotConfig = {
+    apiUrl: '{{ siteUrl("chatbot/message") }}',
+    rateUrl: '{{ siteUrl("chatbot/rate") }}',
+    csrfTokenName: '{{ csrfTokenName }}',
+    csrfTokenValue: '{{ csrfTokenValue }}',
+    companyName: {{ settings.companyName | json_encode | raw }},
+    logoText: {{ settings.logoText | json_encode | raw }},
+    logoUrl: {{ logoUrl | json_encode | raw }},
+    primaryColor: {{ settings.primaryColor | json_encode | raw }},
+    initialMessage: {{ settings.initialMessage | json_encode | raw }},
+    defaultTheme: {{ settings.defaultTheme | json_encode | raw }},
+    enableRatings: {{ settings.enableRatings ? 'true' : 'false' }},
+    suggestionsEnabled: {{ settings.suggestionsEnabled ?? true ? 'true' : 'false' }},
+    suggestions: {{ settings.suggestions | default([]) | json_encode | raw }}
+};
+</script>

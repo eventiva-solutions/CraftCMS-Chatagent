@@ -1,0 +1,487 @@
+{% extends "_layouts/cp" %}
+
+{% set title = "Dashboard" %}
+{% set selectedSubnavItem = "dashboard" %}
+
+{% block actionButton %}
+    <a href="{{ cpUrl('chatagent/logs') }}" class="btn">Gesprächslogs</a>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-dashboard">
+
+    {# ── Daterange Filter ─────────────────────────────────────────── #}
+    <div class="pane" style="margin-bottom: 24px; padding: 16px 20px">
+        <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap">
+            <div>
+                <label style="display: block; font-size: 12px; color: var(--medium-dark-text-color); margin-bottom: 4px; font-weight: 600">Von</label>
+                <input type="date" id="filter-from" value="{{ from }}" class="text" style="padding: 6px 10px; font-size: 14px">
+            </div>
+            <div>
+                <label style="display: block; font-size: 12px; color: var(--medium-dark-text-color); margin-bottom: 4px; font-weight: 600">Bis</label>
+                <input type="date" id="filter-to" value="{{ to }}" class="text" style="padding: 6px 10px; font-size: 14px">
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <button id="btn-apply" class="btn submit" type="button">Anwenden</button>
+                <button class="btn btn-preset" type="button" data-days="7">Letzte 7 Tage</button>
+                <button class="btn btn-preset" type="button" data-days="30">Letzte 30 Tage</button>
+                <button class="btn btn-preset" type="button" data-days="90">Letzte 90 Tage</button>
+            </div>
+        </div>
+    </div>
+
+    {# ── Quick Links ──────────────────────────────────────────────── #}
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px">
+        <a href="{{ cpUrl('chatagent/logs') }}" class="btn">Gesprächslogs</a>
+        <a href="{{ cpUrl('chatagent/training') }}" class="btn">Training</a>
+        <a href="{{ cpUrl('chatagent/settings') }}" class="btn">Einstellungen</a>
+    </div>
+
+    {# ── Chat Stat Widgets ────────────────────────────────────────── #}
+    <div class="stat-grid" style="margin-bottom: 24px">
+
+        <div class="pane stat-widget">
+            <div id="stat-sessions" class="stat-value">{{ chatStats.sessions }}</div>
+            <div class="stat-label">Gespräche</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div id="stat-messages" class="stat-value">{{ chatStats.messages }}</div>
+            <div class="stat-label">Nachrichten</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div id="stat-avgms" class="stat-value">
+                {% if chatStats.avgResponseMs %}
+                    {{ (chatStats.avgResponseMs / 1000)|round(1) }}s
+                {% else %}
+                    –
+                {% endif %}
+            </div>
+            <div class="stat-label">Ø Antwortzeit</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div id="stat-per-day" class="stat-value">
+                {% set days = ((to|date('U') - from|date('U')) / 86400)|round + 1 %}
+                {% if chatStats.sessions > 0 and days > 0 %}
+                    {{ (chatStats.sessions / days)|round(1) }}
+                {% else %}
+                    0
+                {% endif %}
+            </div>
+            <div class="stat-label">Ø Gespräche/Tag</div>
+        </div>
+
+        {% if enableRatings %}
+        <div class="pane stat-widget" style="grid-column: span 2">
+            <div id="stat-thumbs-up" class="stat-value" style="color: #27ab83">{{ chatStats.thumbsUp }}</div>
+            <div class="stat-label" style="color: #27ab83; display: flex; align-items: center; justify-content: center; gap: 5px">{% include 'chatbot/icons/thumb-up.svg' with {size: 14} %} Positiv bewertet</div>
+        </div>
+
+        <div class="pane stat-widget" style="grid-column: span 2">
+            <div id="stat-thumbs-down" class="stat-value" style="color: #cf1124">{{ chatStats.thumbsDown }}</div>
+            <div class="stat-label" style="color: #cf1124; display: flex; align-items: center; justify-content: center; gap: 5px">{% include 'chatbot/icons/thumb-down.svg' with {size: 14} %} Negativ bewertet</div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    {# ── Activity Chart ───────────────────────────────────────────── #}
+    <div class="pane" style="padding: 20px; margin-bottom: 24px">
+        <div style="font-weight: 600; margin-bottom: 16px; font-size: 14px">Aktivität im Zeitraum</div>
+        <div style="position: relative; height: 280px">
+            <canvas id="activity-chart"></canvas>
+        </div>
+    </div>
+
+    {# ── Suggestion Stats ──────────────────────────────────────────── #}
+    {% if suggestionStats | length %}
+    <div style="font-weight: 600; margin-bottom: 12px; font-size: 13px; color: var(--medium-dark-text-color); text-transform: uppercase; letter-spacing: 0.5px">
+        Vorschläge-Statistik
+    </div>
+    <div style="max-width: 560px; margin-bottom: 24px">
+        <div class="pane" style="padding: 0; overflow: hidden">
+            <table id="suggestion-stats-table" class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th scope="col">Vorgeschlagene Frage</th>
+                        <th scope="col" class="thin rightalign">Verwendet</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in suggestionStats %}
+                        <tr>
+                            <td>{{ row.suggestion }}</td>
+                            <td class="thin rightalign" style="font-weight: 600; color: var(--link-color)">{{ row.cnt }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    <div id="suggestion-stats-section" style="display: none; max-width: 560px; margin-bottom: 24px">
+        <div style="font-weight: 600; margin-bottom: 12px; font-size: 13px; color: var(--medium-dark-text-color); text-transform: uppercase; letter-spacing: 0.5px">
+            Vorschläge-Statistik
+        </div>
+        <div class="pane" style="padding: 0; overflow: hidden">
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th scope="col">Vorgeschlagene Frage</th>
+                        <th scope="col" class="thin rightalign">Verwendet</th>
+                    </tr>
+                </thead>
+                <tbody id="suggestion-stats-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    {# ── Training Stat Widgets ─────────────────────────────────────── #}
+    <div style="font-weight: 600; margin-bottom: 12px; font-size: 13px; color: var(--medium-dark-text-color); text-transform: uppercase; letter-spacing: 0.5px">
+        Trainingsdaten
+    </div>
+    <div class="stat-grid" style="margin-bottom: 8px">
+
+        <div class="pane stat-widget">
+            <div class="stat-value">{{ vectorStats.totalEntries }}</div>
+            <div class="stat-label">Indexierte Entries</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div class="stat-value">{{ vectorStats.totalChunks }}</div>
+            <div class="stat-label">Entry-Chunks</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div class="stat-value">{{ vectorStats.sections|length }}</div>
+            <div class="stat-label">
+                Sections
+                {% if vectorStats.sections|length %}
+                    <span style="display: block; font-size: 11px; margin-top: 4px; font-weight: 400">{{ vectorStats.sections|join(', ') }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div class="stat-value" style="font-size: 1.4em">
+                {{ vectorStats.lastIndexed ? vectorStats.lastIndexed|date('d.m.Y') : '–' }}
+            </div>
+            <div class="stat-label">
+                Letztes Entry-Training
+                {% if vectorStats.lastIndexed %}
+                    <span style="display: block; font-size: 11px; margin-top: 2px; font-weight: 400">{{ vectorStats.lastIndexed|date('H:i') }} Uhr</span>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    {# ── File Stats ────────────────────────────────────────────────── #}
+    <div class="stat-grid" style="margin-bottom: 24px">
+
+        <div class="pane stat-widget">
+            <div id="dash-file-count" class="stat-value">{{ fileStats.totalFiles }}</div>
+            <div class="stat-label">Indexierte Dateien</div>
+        </div>
+
+        <div class="pane stat-widget">
+            <div id="dash-file-chunks" class="stat-value">{{ fileStats.totalChunks }}</div>
+            <div class="stat-label">Datei-Chunks</div>
+        </div>
+
+        <div class="pane stat-widget" style="grid-column: span 2">
+            <div class="stat-value" style="font-size: 1.4em">
+                {{ fileStats.lastIndexed ? fileStats.lastIndexed|date('d.m.Y') : '–' }}
+            </div>
+            <div class="stat-label">
+                Letzte Datei-Indexierung
+                {% if fileStats.lastIndexed %}
+                    <span style="display: block; font-size: 11px; margin-top: 2px; font-weight: 400">{{ fileStats.lastIndexed|date('H:i') }} Uhr</span>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.stat-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    text-align: center;
+    min-height: 110px;
+    margin: 0 !important;
+}
+.stat-value {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: var(--link-color);
+    line-height: 1.1;
+}
+.stat-label {
+    color: var(--medium-dark-text-color);
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.btn-preset.is-active {
+    background: var(--link-color);
+    color: #fff;
+    border-color: var(--link-color);
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+    onerror="console.error('[Chatbot Dashboard] Chart.js konnte nicht geladen werden – CDN blockiert? CSP-Header prüfen.')">
+</script>
+<script>
+(function () {
+    var chartLabels   = {{ chartLabels|json_encode|raw }};
+    var chartSessions = {{ chartSessions|json_encode|raw }};
+    var chartMessages = {{ chartMessages|json_encode|raw }};
+    var statsUrl      = '{{ cpUrl('chatagent/dashboard/stats') }}';
+    var enableRatings = {{ enableRatings ? 'true' : 'false' }};
+    var csrfToken = '{{ craft.app.request.csrfToken }}';
+
+    console.log('[Chatbot Dashboard] Chart.js verfügbar:', typeof Chart !== 'undefined');
+    console.log('[Chatbot Dashboard] Daten:', { labels: chartLabels, sessions: chartSessions, messages: chartMessages });
+    console.log('[Chatbot Dashboard] Stats-URL:', statsUrl);
+
+    if (typeof Chart === 'undefined') {
+        console.error('[Chatbot Dashboard] Chart.js nicht geladen – Script-Tag blockiert?');
+        var pane = document.querySelector('#chatbot-dashboard .pane');
+        document.getElementById('activity-chart').insertAdjacentHTML('beforebegin',
+            '<p style="color:#cf1124;font-size:13px">⚠ Chart.js konnte nicht geladen werden (CSP oder Netzwerkfehler). Konsole prüfen.</p>');
+        return;
+    }
+
+    var canvasEl = document.getElementById('activity-chart');
+    if (!canvasEl) {
+        console.error('[Chatbot Dashboard] Canvas-Element #activity-chart nicht gefunden.');
+        return;
+    }
+
+    var ctx;
+    try {
+        ctx = canvasEl.getContext('2d');
+    } catch (e) {
+        console.error('[Chatbot Dashboard] getContext() fehlgeschlagen:', e);
+        return;
+    }
+
+    var chart;
+    try {
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                {
+                    label: 'Gespräche',
+                    data: chartSessions,
+                    borderColor: 'rgb(99, 102, 241)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: chartLabels.length > 40 ? 0 : 3,
+                    pointHoverRadius: 5,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Nachrichten',
+                    data: chartMessages,
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: chartLabels.length > 40 ? 0 : 3,
+                    pointHoverRadius: 5,
+                    borderWidth: 2,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 16, font: { size: 12 } }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    padding: 10,
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0, font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    ticks: {
+                        maxTicksLimit: 16,
+                        maxRotation: 40,
+                        font: { size: 11 }
+                    },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+    console.log('[Chatbot Dashboard] Chart erstellt:', chart);
+    } catch (e) {
+        console.error('[Chatbot Dashboard] Chart-Erstellung fehlgeschlagen:', e);
+    }
+
+    // ── Date Presets ───────────────────────────────────────────────
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function setActivePreset(activeDays) {
+        document.querySelectorAll('.btn-preset').forEach(function (b) {
+            b.classList.toggle('is-active', parseInt(b.dataset.days, 10) === activeDays);
+        });
+    }
+
+    // Standard: 7 Tage beim Seitenload markieren
+    setActivePreset(7);
+
+    document.querySelectorAll('.btn-preset').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var days = parseInt(btn.dataset.days, 10);
+            var to   = new Date();
+            var from = new Date();
+            from.setDate(from.getDate() - (days - 1));
+            document.getElementById('filter-from').value = formatDate(from);
+            document.getElementById('filter-to').value   = formatDate(to);
+            setActivePreset(days);
+            loadStats();
+        });
+    });
+
+    // Benutzerdefinierter Zeitraum → kein Preset aktiv
+    document.getElementById('btn-apply').addEventListener('click', function () {
+        setActivePreset(null);
+        loadStats();
+    });
+
+    // ── AJAX Refresh ───────────────────────────────────────────────
+    function loadStats() {
+        var from = document.getElementById('filter-from').value;
+        var to   = document.getElementById('filter-to').value;
+        if (!from || !to) return;
+
+        console.log('[Chatbot Dashboard] loadStats() von', from, 'bis', to);
+        document.getElementById('btn-apply').disabled = true;
+        document.getElementById('btn-apply').textContent = '…';
+
+        var url = statsUrl + '?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+        console.log('[Chatbot Dashboard] AJAX GET:', url);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        xhr.onload = function () {
+            console.log('[Chatbot Dashboard] AJAX Status:', xhr.status, '| Antwort:', xhr.responseText.substring(0, 300));
+            document.getElementById('btn-apply').disabled = false;
+            document.getElementById('btn-apply').textContent = 'Anwenden';
+            try {
+                var data = JSON.parse(xhr.responseText);
+                console.log('[Chatbot Dashboard] Geparste Daten:', data);
+                if (!data.success) {
+                    console.warn('[Chatbot Dashboard] success=false:', data);
+                    return;
+                }
+
+                var cs = data.chatStats;
+
+                // Update stat widgets
+                document.getElementById('stat-sessions').textContent = cs.sessions;
+                document.getElementById('stat-messages').textContent = cs.messages;
+                document.getElementById('stat-avgms').textContent =
+                    cs.avgResponseMs ? (cs.avgResponseMs / 1000).toFixed(1) + 's' : '–';
+
+                if (enableRatings) {
+                    document.getElementById('stat-thumbs-up').textContent   = cs.thumbsUp   || 0;
+                    document.getElementById('stat-thumbs-down').textContent = cs.thumbsDown || 0;
+                }
+
+                // Update file stats
+                var fs = data.fileStats;
+                if (fs) {
+                    var fCount  = document.getElementById('dash-file-count');
+                    var fChunks = document.getElementById('dash-file-chunks');
+                    if (fCount)  fCount.textContent  = fs.totalFiles;
+                    if (fChunks) fChunks.textContent = fs.totalChunks;
+                }
+
+                // Update suggestion stats
+                var suggStats = data.suggestionStats || [];
+                var sugSection = document.getElementById('suggestion-stats-section');
+                var sugBody    = document.getElementById('suggestion-stats-body');
+                if (sugStats.length && sugBody) {
+                    var rows = suggStats.map(function(r) {
+                        return '<tr><td>' + r.suggestion.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>' +
+                               '<td class="thin rightalign" style="font-weight:600;color:var(--link-color)">' + r.cnt + '</td></tr>';
+                    }).join('');
+                    sugBody.innerHTML = rows;
+                    sugSection.style.display = '';
+                } else if (sugBody) {
+                    sugBody.innerHTML = '';
+                    sugSection.style.display = 'none';
+                }
+
+                var dayKeys = Object.keys(cs.dailySessions);
+                var perDay  = dayKeys.length > 0 && cs.sessions > 0
+                    ? (cs.sessions / dayKeys.length).toFixed(1)
+                    : '0';
+                document.getElementById('stat-per-day').textContent = perDay;
+
+                // Update chart
+                var labels   = dayKeys.map(function (d) {
+                    var p = d.split('-');
+                    return p[2] + '.' + p[1] + '.';
+                });
+                var sessions = dayKeys.map(function (d) { return cs.dailySessions[d]; });
+                var messages = dayKeys.map(function (d) { return cs.dailyMessages[d]; });
+
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = sessions;
+                chart.data.datasets[1].data = messages;
+                var noPoints = labels.length > 40;
+                chart.data.datasets[0].pointRadius = noPoints ? 0 : 3;
+                chart.data.datasets[1].pointRadius = noPoints ? 0 : 3;
+                chart.update();
+
+            } catch (e) { console.error('Dashboard stats parse error', e); }
+        };
+        xhr.onerror = function () {
+            console.error('[Chatbot Dashboard] Netzwerkfehler beim AJAX-Request.');
+            document.getElementById('btn-apply').disabled = false;
+            document.getElementById('btn-apply').textContent = 'Anwenden';
+        };
+        xhr.send();
+    }
+})();
+</script>
+{% endblock %}

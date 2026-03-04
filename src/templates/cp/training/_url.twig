@@ -1,0 +1,143 @@
+{% extends "_layouts/cp" %}
+
+{% set title = title %}
+{% set selectedSubnavItem = "training" %}
+
+{% block actionButton %}
+    <button id="btn-recrawl" class="btn submit" type="button" data-url-id="{{ urlDoc.id }}">
+        <span class="spinner hidden" style="margin-right: 6px"></span>
+        Neu crawlen &amp; indexieren
+    </button>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-training-url">
+
+    {# URL meta #}
+    <div class="pane" style="margin-bottom: 24px; padding: 16px 20px">
+        <table class="data">
+            <tr>
+                <th style="width: 140px">URL</th>
+                <td><a href="{{ urlDoc.url }}" target="_blank" rel="noopener">{{ urlDoc.url }}</a></td>
+            </tr>
+            <tr>
+                <th>Seitentitel</th>
+                <td>{{ urlDoc.title ?: '–' }}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td>
+                    {% if urlDoc.status == 'indexed' %}
+                        <span style="color: #27ae60; font-weight: 600">Indexiert</span>
+                    {% elseif urlDoc.status == 'error' %}
+                        <span style="color: #cf1124; font-weight: 600">Fehler</span>
+                        {% if urlDoc.error_msg %}
+                            &mdash; <span style="color: #8f98a3; font-size: 12px">{{ urlDoc.error_msg }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: #f39c12; font-weight: 600">Ausstehend</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Chunks</th>
+                <td>{{ chunks|length }}</td>
+            </tr>
+            <tr>
+                <th>Zuletzt gecrawlt</th>
+                <td>
+                    {% if urlDoc.last_crawled %}
+                        {{ urlDoc.last_crawled|date('d.m.Y H:i') }} Uhr
+                    {% else %}
+                        <span style="color: #8f98a3">–</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {# Chunk list #}
+    {% if chunks|length %}
+        <h2 style="margin-bottom: 16px">Chunks ({{ chunks|length }})</h2>
+
+        {% for chunk in chunks %}
+        <div class="pane" style="margin-bottom: 16px; padding: 16px 20px">
+
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px">
+                <strong>Chunk #{{ chunk.chunk_index + 1 }}</strong>
+                <span style="font-size: 12px; color: #8f98a3">
+                    Indexiert: {{ chunk.indexed_at|date('d.m.Y H:i') }}
+                </span>
+            </div>
+
+            <pre style="
+                background: #f3f4f6;
+                border-radius: 4px;
+                padding: 12px;
+                white-space: pre-wrap;
+                word-break: break-word;
+                font-size: 13px;
+                line-height: 1.5;
+                margin-bottom: 12px;
+                max-height: 300px;
+                overflow-y: auto;
+            ">{{ chunk.chunk_text }}</pre>
+
+            <div style="font-size: 12px; color: #8f98a3">
+                <strong>Embedding-Vorschau</strong> (erste 5 Werte):
+                <code style="margin-left: 6px">
+                    [{% for val in chunk.embedding_preview %}{{ val|round(6) }}{% if not loop.last %}, {% endif %}{% endfor %}, …]
+                </code>
+            </div>
+
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="pane" style="padding: 24px; text-align: center; color: #8f98a3">
+            Diese URL wurde noch nicht indexiert oder enthält keine Chunks.
+        </div>
+    {% endif %}
+
+    <div style="margin-top: 16px">
+        <a href="{{ cpUrl('chatagent/training') }}#tab-urls" class="btn">← Zurück zur Übersicht</a>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    var csrfToken = '{{ craft.app.request.csrfToken }}';
+    var crawlUrl  = '{{ actionUrl("chatbot/training/crawl-url") }}';
+
+    document.getElementById('btn-recrawl').addEventListener('click', function () {
+        var btn   = this;
+        var urlId = btn.dataset.urlId;
+        btn.disabled = true;
+        btn.querySelector('.spinner').classList.remove('hidden');
+
+        var fd = new FormData();
+        fd.append('{{ craft.app.config.general.csrfTokenName }}', csrfToken);
+        fd.append('urlId', urlId);
+
+        fetch(crawlUrl, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd,
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                alert('URL zur Warteschlange hinzugefügt. Der Fortschritt ist im Queue Manager sichtbar.');
+            } else {
+                alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            }
+        })
+        .catch(function () { alert('Netzwerkfehler.'); })
+        .finally(function () {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+        });
+    });
+})();
+</script>
+{% endblock %}

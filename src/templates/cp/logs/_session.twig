@@ -1,0 +1,306 @@
+{% extends "_layouts/cp" %}
+
+
+{% set title = "Session #" ~ session.id %}
+{% set selectedSubnavItem = "logs" %}
+{% set crumbs = [
+    { label: "Chatbot Logs", url: url('chatagent/logs') }
+] %}
+
+{% block actionButton %}
+    <div class="flex" style="gap: 6px">
+        <a href="{{ url('chatagent/logs') }}" class="btn">← Zurück</a>
+
+        <form method="post" onsubmit="return confirm('Session wirklich löschen?')">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="chatbot/logs/delete">
+            <input type="hidden" name="id" value="{{ session.id }}">
+            <button type="submit" class="btn">Session löschen</button>
+        </form>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-session">
+
+    {# Session-Metadaten #}
+    <div class="meta">
+        <div class="data">
+            <div class="heading">Session-ID</div>
+            <div class="value"><code>{{ session.sessionId }}</code></div>
+        </div>
+        <div class="data">
+            <div class="heading">Gestartet</div>
+            <div class="value">{{ session.dateCreated | date('d.m.Y H:i:s') }}</div>
+        </div>
+        <div class="data">
+            <div class="heading">Nachrichten</div>
+            <div class="value">{{ session.messageCount }}</div>
+        </div>
+        <div class="data">
+            <div class="heading">IP-Adresse</div>
+            <div class="value"><code>{{ session.ipAddress ?? '–' }}</code></div>
+        </div>
+        {% if session.pageUrl %}
+        <div class="data">
+            <div class="heading">Seite</div>
+            <div class="value">
+                <a href="{{ session.pageUrl }}" target="_blank" rel="noopener">{{ session.pageUrl }}</a>
+            </div>
+        </div>
+        {% endif %}
+        {% if session.userAgent %}
+        <div class="data">
+            <div class="heading">Browser</div>
+            <div class="value light" style="font-size: 12px">{{ session.userAgent }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Gesprächsverlauf #}
+    <div class="pane" style="margin-top: 1.5rem">
+        <h2>Gesprächsverlauf</h2>
+
+        {% if messages | length %}
+            <div class="chatlog">
+                {% set prevUserMsg = '' %}
+                {% set prevUserMsgId = null %}
+                {% for msg in messages %}
+                    {% set usedAsQa = msg.id in qaSourceMsgIds %}
+                    <div class="chatlog-msg chatlog-msg--{{ msg.role }}" data-msg-id="{{ msg.id }}">
+                        <div class="chatlog-meta">
+                            <span class="status {% if msg.role == 'user' %}blue{% else %}green{% endif %}"></span>
+                            <strong>{{ msg.role == 'user' ? 'Nutzer' : 'Bot' }}</strong>
+                            <span class="light">{{ msg.dateCreated | date('H:i:s') }}</span>
+                            {% if msg.responseTimeMs %}
+                                <span class="light">· {{ msg.responseTimeMs }}ms</span>
+                            {% endif %}
+                            {% if msg.role == 'bot' and msg.confidenceScore is not null %}
+                                {% set score = msg.confidenceScore %}
+                                {% if score >= 0.80 %}
+                                    <span class="conf-badge conf-high" title="Konfidenz: {{ (score * 100) | round(1) }}% – Gute Wissensbasis-Übereinstimmung">🟢 {{ (score * 100) | round(0) }}%</span>
+                                {% elseif score >= 0.60 %}
+                                    <span class="conf-badge conf-medium" title="Konfidenz: {{ (score * 100) | round(1) }}% – Mäßige Übereinstimmung">🟡 {{ (score * 100) | round(0) }}%</span>
+                                {% else %}
+                                    <span class="conf-badge conf-low" title="Konfidenz: {{ (score * 100) | round(1) }}% – Schwache Übereinstimmung, Q&amp;A Training empfohlen">🔴 {{ (score * 100) | round(0) }}%</span>
+                                {% endif %}
+                            {% elseif msg.role == 'bot' %}
+                                <span class="conf-badge conf-none" title="Kein passender Kontext in der Wissensdatenbank gefunden">⚪ Kein Kontext</span>
+                            {% endif %}
+                            {% if msg.role == 'bot' and msg.rating %}
+                                {% if msg.rating == 'up' %}
+                                    <span style="color: #27ab83; margin-left: 4px" title="Positiv bewertet">{% include 'chatbot/icons/thumb-up.svg' with {size: 13} %}</span>
+                                {% else %}
+                                    <span style="color: #cf1124; margin-left: 4px" title="Negativ bewertet">{% include 'chatbot/icons/thumb-down.svg' with {size: 13} %}</span>
+                                {% endif %}
+                            {% endif %}
+                            {% if msg.role == 'bot' %}
+                                {% if usedAsQa %}
+                                    <span class="qa-used-badge" title="Als Q&A-Trainingsbeispiel verwendet">✓ Q&amp;A Training</span>
+                                {% else %}
+                                    <button type="button"
+                                        class="btn-use-as-qa"
+                                        data-msg-id="{{ msg.id }}"
+                                        data-question="{{ prevUserMsg | striptags | e('html_attr') }}"
+                                        data-answer="{{ msg.message | striptags | e('html_attr') }}"
+                                        title="Als Q&amp;A-Trainingsbeispiel verwenden">
+                                        + Q&amp;A
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="chatlog-bubble">
+                            {{ msg.message | raw }}
+                        </div>
+                    </div>
+                    {% if msg.role == 'user' %}
+                        {% set prevUserMsg = msg.message %}
+                        {% set prevUserMsgId = msg.id %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="zilch">
+                <p>Keine Nachrichten in dieser Session.</p>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{# ── Q&A Modal ────────────────────────────────────────────────────── #}
+<div id="qa-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.5); align-items:center; justify-content:center">
+    <div style="background:#fff; border-radius:8px; padding:28px 32px; width:600px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <h2 style="margin:0 0 6px; font-size:16px; color:#3f4d5a">Als Q&amp;A-Trainingsbeispiel speichern</h2>
+        <p style="margin:0 0 20px; font-size:13px; color:#596673">Passe Frage und Antwort an und speichere das Paar. Es wird sofort in den Chatbot indexiert.</p>
+        <input type="hidden" id="qa-modal-msg-id" value="">
+        <div style="margin-bottom:14px">
+            <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Frage</label>
+            <input type="text" id="qa-modal-question" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:20px">
+            <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Antwort <span style="font-weight:400; font-style:italic">(bearbeitbar – korrigiere die Bot-Antwort falls nötig)</span></label>
+            <textarea id="qa-modal-answer" rows="6" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; resize:vertical; box-sizing:border-box; font-family:inherit"></textarea>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; justify-content:flex-end">
+            <span id="qa-modal-status" style="font-size:13px; color:#596673; margin-right:auto"></span>
+            <button type="button" id="qa-modal-cancel" class="btn">Abbrechen</button>
+            <button type="button" id="qa-modal-save" class="btn submit">Speichern &amp; indexieren</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.chatlog {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 700px;
+}
+.chatlog-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+.chatlog-bubble {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 80%;
+    word-break: break-word;
+}
+.chatlog-msg--user .chatlog-bubble {
+    background: #DBEAFE;
+    color: #1E3A5F;
+    border-bottom-right-radius: 4px;
+}
+.chatlog-msg--bot .chatlog-bubble {
+    background: #F3F4F6;
+    color: #1F2937;
+    border-bottom-left-radius: 4px;
+}
+.btn-use-as-qa {
+    background: none;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #596673;
+    white-space: nowrap;
+}
+.btn-use-as-qa:hover {
+    background: #EDE9FE;
+    border-color: #7C3AED;
+    color: #5B21B6;
+}
+.qa-used-badge {
+    display: inline-block;
+    background: #EDE9FE;
+    color: #5B21B6;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.conf-badge {
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.conf-none {
+    color: #9ca3af;
+    font-weight: 400;
+    font-style: italic;
+}
+</style>
+
+<script>
+(function () {
+    var csrfToken  = '{{ craft.app.request.csrfToken }}';
+    var trainingUrl = '{{ cpUrl('chatagent/training') }}';
+
+    function apiPost(endpoint, data, cb) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', trainingUrl + '/' + endpoint);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        xhr.onload = function () {
+            try { cb(null, JSON.parse(xhr.responseText)); }
+            catch (e) { cb('Ungültige Serverantwort'); }
+        };
+        xhr.onerror = function () { cb('Netzwerkfehler'); };
+        xhr.send(JSON.stringify(Object.assign({ CRAFT_CSRF_TOKEN: csrfToken }, data)));
+    }
+
+    var modal   = document.getElementById('qa-modal');
+    var activeMsgId = null;
+    var activeBtn   = null;
+
+    // Open modal when "Q&A" button is clicked
+    document.querySelectorAll('.btn-use-as-qa').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            activeMsgId = btn.dataset.msgId;
+            activeBtn   = btn;
+            document.getElementById('qa-modal-msg-id').value    = activeMsgId;
+            document.getElementById('qa-modal-question').value  = btn.dataset.question;
+            document.getElementById('qa-modal-answer').value    = btn.dataset.answer;
+            document.getElementById('qa-modal-status').textContent = '';
+            modal.style.display = 'flex';
+        });
+    });
+
+    // Cancel
+    document.getElementById('qa-modal-cancel').addEventListener('click', function () {
+        modal.style.display = 'none';
+    });
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    // Save Q&A pair
+    document.getElementById('qa-modal-save').addEventListener('click', function () {
+        var question  = document.getElementById('qa-modal-question').value.trim();
+        var answer    = document.getElementById('qa-modal-answer').value.trim();
+        var sourceMsgId = document.getElementById('qa-modal-msg-id').value;
+        if (!question || !answer) {
+            document.getElementById('qa-modal-status').textContent = 'Bitte Frage und Antwort ausfüllen.';
+            return;
+        }
+        var btn = this;
+        btn.disabled = true;
+        document.getElementById('qa-modal-status').textContent = 'Wird gespeichert…';
+
+        apiPost('save-qa-pair', {
+            question:    question,
+            answer:      answer,
+            source:      'log',
+            sourceMsgId: parseInt(sourceMsgId, 10) || null
+        }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                document.getElementById('qa-modal-status').textContent = 'Fehler: ' + (err || data.error);
+                return;
+            }
+            modal.style.display = 'none';
+            // Replace the Q&A button with the "used" badge
+            if (activeBtn) {
+                var badge = document.createElement('span');
+                badge.className = 'qa-used-badge';
+                badge.title     = 'Als Q&A-Trainingsbeispiel verwendet';
+                badge.textContent = '✓ Q&A Training';
+                activeBtn.replaceWith(badge);
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

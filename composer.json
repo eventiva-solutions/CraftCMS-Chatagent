@@ -1,0 +1,48 @@
+{
+  "name": "eventiva/craft-chatagent",
+  "description": "Plugin name: Chatagent",
+  "type": "craft-plugin",
+  "license": "proprietary",
+  "support": {
+    "email": "support@eventiva.io",
+    "issues": "https://github.com/vxdy/craftcms-chatagent.git/issues?state=open",
+    "source": "https://github.com/vxdy/craftcms-chatagent.git",
+    "docs": "https://github.com/vxdy/craftcms-chatagent.git",
+    "rss": "https://github.com/vxdy/craftcms-chatagent.git/releases.atom"
+  },
+  "require": {
+    "php": ">=8.2",
+    "craftcms/cms": "^5.9.0"
+  },
+  "require-dev": {
+    "craftcms/ecs": "dev-main",
+    "craftcms/phpstan": "dev-main"
+  },
+  "autoload": {
+    "psr-4": {
+      "eventiva\\craftchatagent\\": "src/"
+    }
+  },
+  "extra": {
+    "handle": "chatagent",
+    "name": "Chatagent",
+    "developer": "Eventiva",
+    "documentationUrl": "https://github.com/vxdy/craftcms-chatagent.git",
+    "class": "eventiva\\craftchatagent\\Chatagent"
+  },
+  "scripts": {
+    "check-cs": "ecs check --ansi",
+    "fix-cs": "ecs check --ansi --fix",
+    "phpstan": "phpstan --memory-limit=1G"
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2"
+    },
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true,
+      "craftcms/plugin-installer": true
+    }
+  }
+}

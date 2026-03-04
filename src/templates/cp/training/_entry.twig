@@ -1,0 +1,128 @@
+{% extends "_layouts/cp" %}
+
+{% set title = title %}
+{% set selectedSubnavItem = "training" %}
+
+{% block actionButton %}
+    <button id="btn-retrain-entry" class="btn submit" type="button"
+            data-entry-id="{{ entryId }}">
+        <span class="spinner hidden" style="margin-right: 6px"></span>
+        Neu trainieren
+    </button>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-training-entry">
+
+    {# Entry meta #}
+    <div class="pane" style="margin-bottom: 24px; padding: 16px 20px">
+        <table class="data">
+            <tr>
+                <th style="width: 140px">Entry-ID</th>
+                <td>#{{ entryId }}</td>
+            </tr>
+            <tr>
+                <th>Section</th>
+                <td><span class="code">{{ section }}</span></td>
+            </tr>
+            <tr>
+                <th>URL</th>
+                <td>
+                    {% if entryUrl %}
+                        <a href="{{ entryUrl }}" target="_blank" rel="noopener">{{ entryUrl }}</a>
+                    {% else %}
+                        <span style="color: #8f98a3">–</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Chunks</th>
+                <td>{{ chunks|length }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {# Chunk list #}
+    <h2 style="margin-bottom: 16px">Chunks</h2>
+
+    {% for chunk in chunks %}
+    <div class="pane" style="margin-bottom: 16px; padding: 16px 20px">
+
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px">
+            <strong>Chunk #{{ chunk.chunk_index + 1 }}</strong>
+            <span style="font-size: 12px; color: #8f98a3">
+                Indexiert: {{ chunk.indexed_at|date('d.m.Y H:i') }}
+            </span>
+        </div>
+
+        <pre style="
+            background: #f3f4f6;
+            border-radius: 4px;
+            padding: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        ">{{ chunk.chunk_text }}</pre>
+
+        <div style="font-size: 12px; color: #8f98a3">
+            <strong>Embedding-Vorschau</strong>
+            (erste 5 Werte):
+            <code style="margin-left: 6px">
+                [{% for val in chunk.embedding_preview %}{{ val|round(6) }}{% if not loop.last %}, {% endif %}{% endfor %}, …]
+            </code>
+        </div>
+
+    </div>
+    {% endfor %}
+
+    <div style="margin-top: 16px">
+        <a href="{{ cpUrl('chatagent/training') }}" class="btn">← Zurück zur Übersicht</a>
+    </div>
+
+</div>
+
+<script>
+(function () {
+    var csrfToken = '{{ craft.app.request.csrfToken }}';
+    var trainUrl  = '{{ cpUrl('chatagent/training/train-entry') }}';
+
+    document.getElementById('btn-retrain-entry').addEventListener('click', function () {
+        var btn     = this;
+        var entryId = btn.dataset.entryId;
+        btn.disabled = true;
+        btn.querySelector('.spinner').classList.remove('hidden');
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', trainUrl);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        xhr.onload = function () {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    alert('Erfolgreich neu trainiert: ' + data.chunks + ' Chunks. Seite wird neu geladen.');
+                    location.reload();
+                } else {
+                    alert('Fehler: ' + data.error);
+                }
+            } catch (e) {
+                alert('Ungültige Serverantwort.');
+            }
+        };
+        xhr.onerror = function () {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+            alert('Netzwerkfehler.');
+        };
+        xhr.send(JSON.stringify({ entryId: entryId, CRAFT_CSRF_TOKEN: csrfToken }));
+    });
+})();
+</script>
+{% endblock %}

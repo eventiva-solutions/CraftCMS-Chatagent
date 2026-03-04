@@ -1,0 +1,352 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Chatbot Einstellungen" %}
+{% set selectedSubnavItem = "settings" %}
+
+{% block content %}
+<div id="chatbot-settings">
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        {{ redirectInput('chatbot/settings') }}
+        <input type="hidden" name="action" value="chatbot/logs/save-settings">
+
+        <nav class="custom-tabs" style="display:flex; border-bottom: 2px solid #e3e5e8; margin-bottom: 24px; gap: 0;">
+            <button type="button" class="custom-tab sel" data-target="tab-general">Allgemein</button>
+            <button type="button" class="custom-tab" data-target="tab-ai">KI-Konfiguration</button>
+            <button type="button" class="custom-tab" data-target="tab-training">Training</button>
+            <button type="button" class="custom-tab" data-target="tab-suggestions">Vorschläge</button>
+            <button type="button" class="custom-tab" data-target="tab-logging">Logging</button>
+        </nav>
+        <style>
+            .custom-tab { background: none; border: none; padding: 8px 16px; cursor: pointer; color: #8f98a3; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+            .custom-tab:hover { color: #3f4d5a; }
+            .custom-tab.sel { color: #3f4d5a; border-bottom-color: #0d78f2; font-weight: 500; }
+        </style>
+
+        {# ── Tab: Allgemein ──────────────────────────────────── #}
+        <div id="tab-general">
+
+            {{ forms.lightswitchField({
+                label: 'Chatbot aktivieren',
+                instructions: 'Zeigt das Chat-Widget auf der Website an.',
+                id: 'enabled',
+                name: 'enabled',
+                on: settings.enabled,
+            }) }}
+
+            <hr>
+            <h2>Darstellung</h2>
+
+            {{ forms.textField({
+                label: 'Firmenname',
+                instructions: 'Wird im Header des Chat-Fensters angezeigt.',
+                id: 'companyName',
+                name: 'companyName',
+                value: settings.companyName,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Logo-Text',
+                instructions: 'Kurztext (max. 3 Zeichen) im Logo-Badge.',
+                id: 'logoText',
+                name: 'logoText',
+                value: settings.logoText,
+                maxlength: 3,
+                size: 5,
+            }) }}
+
+            {{ forms.elementSelectField({
+                label: 'Logo-Bild',
+                instructions: 'Optionales Bild statt Logo-Text. Empfohlen: quadratisch, mind. 80×80 px.',
+                id: 'logoAssetId',
+                name: 'logoAssetId',
+                elementType: 'craft\\elements\\Asset',
+                limit: 1,
+                elements: logoAsset ? [logoAsset] : [],
+                criteria: { kind: 'image' },
+            }) }}
+
+            <div class="field">
+                <div class="heading">
+                    <label for="primaryColor">Primärfarbe</label>
+                    <div class="instructions"><p>Farbe für Chat-Button, Senden-Button und User-Nachrichten.</p></div>
+                </div>
+                <div class="input ltr flex" style="gap: 10px; align-items: center">
+                    <input id="primaryColor" type="color" name="primaryColor" value="{{ settings.primaryColor }}"
+                           oninput="document.getElementById('primaryColorHex').value = this.value">
+                    <input id="primaryColorHex" class="nicetext code" type="text" maxlength="7"
+                           style="width: 90px"
+                           value="{{ settings.primaryColor }}"
+                           placeholder="#7C3AED"
+                           oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('primaryColor').value = this.value">
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="heading">
+                    <label for="logoBgColor">Logo-Hintergrundfarbe</label>
+                    <div class="instructions"><p>Hintergrundfarbe des Logo-Badges im Chat-Header.</p></div>
+                </div>
+                <div class="input ltr flex" style="gap: 10px; align-items: center">
+                    <input id="logoBgColor" type="color" name="logoBgColor" value="{{ settings.logoBgColor ?? settings.primaryColor }}"
+                           oninput="document.getElementById('logoBgColorHex').value = this.value">
+                    <input id="logoBgColorHex" class="nicetext code" type="text" maxlength="7"
+                           style="width: 90px"
+                           value="{{ settings.logoBgColor ?? settings.primaryColor }}"
+                           placeholder="#7C3AED"
+                           oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('logoBgColor').value = this.value">
+                </div>
+            </div>
+
+            {{ forms.selectField({
+                label: 'Standard-Theme',
+                instructions: 'Helles oder dunkles Design als Standard.',
+                id: 'defaultTheme',
+                name: 'defaultTheme',
+                value: settings.defaultTheme,
+                options: [
+                    { label: 'Hell', value: 'light' },
+                    { label: 'Dunkel', value: 'dark' },
+                ],
+            }) }}
+
+        </div>{# /tab-general #}
+
+        {# ── Tab: KI-Konfiguration ───────────────────────────── #}
+        <div id="tab-ai" class="hidden">
+
+            {{ forms.textField({
+                label: 'OpenAI API Key',
+                instructions: 'Wird für Embeddings und Chat-Anfragen direkt von Craft verwendet.',
+                id: 'openaiApiKey',
+                name: 'openaiApiKey',
+                value: settings.openaiApiKey,
+                type: 'password',
+                placeholder: 'sk-...',
+            }) }}
+
+            {{ forms.selectField({
+                label: 'Chat-Modell',
+                instructions: 'OpenAI-Modell für Chat-Antworten.',
+                id: 'openaiModel',
+                name: 'openaiModel',
+                value: settings.openaiModel,
+                options: [
+                    { label: 'gpt-4o-mini (empfohlen, günstig)', value: 'gpt-4o-mini' },
+                    { label: 'gpt-4o (leistungsfähiger)', value: 'gpt-4o' },
+                    { label: 'gpt-3.5-turbo (Legacy)', value: 'gpt-3.5-turbo' },
+                ],
+            }) }}
+
+            {{ forms.selectField({
+                label: 'Embedding-Modell',
+                instructions: 'OpenAI-Modell für die Vektorisierung von Texten beim Training und bei Suchanfragen.',
+                id: 'embeddingModel',
+                name: 'embeddingModel',
+                value: settings.embeddingModel,
+                options: [
+                    { label: 'text-embedding-3-small (empfohlen)', value: 'text-embedding-3-small' },
+                    { label: 'text-embedding-3-large', value: 'text-embedding-3-large' },
+                    { label: 'text-embedding-ada-002 (Legacy)', value: 'text-embedding-ada-002' },
+                ],
+            }) }}
+
+            <div class="pane" style="margin-top: -8px; margin-bottom: 16px; padding: 12px 16px; font-size: 13px; background: #f8f8f8;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #e3e5e8;">
+                            <th style="text-align: left; padding: 4px 8px 8px 0; color: #3f4d5a;">Modell</th>
+                            <th style="text-align: left; padding: 4px 8px 8px; color: #3f4d5a;">Dimensionen</th>
+                            <th style="text-align: left; padding: 4px 8px 8px; color: #3f4d5a;">Kosten</th>
+                            <th style="text-align: left; padding: 4px 0 8px; color: #3f4d5a;">Empfehlung</th>
+                        </tr>
+                    </thead>
+                    <tbody style="color: #596673;">
+                        <tr>
+                            <td style="padding: 6px 8px 6px 0;"><code>text-embedding-3-small</code></td>
+                            <td style="padding: 6px 8px;">1.536</td>
+                            <td style="padding: 6px 8px;">$0,02 / 1M Token</td>
+                            <td style="padding: 6px 0;">Ideal für die meisten Anwendungsfälle - schnell, günstig</td>
+                        </tr>
+                        <tr style="background: #f0f0f0;">
+                            <td style="padding: 6px 8px 6px 0;"><code>text-embedding-3-large</code></td>
+                            <td style="padding: 6px 8px;">3.072</td>
+                            <td style="padding: 6px 8px;">$0,13 / 1M Token</td>
+                            <td style="padding: 6px 0;">Höhere Präzision bei komplexen Texten - ca. 6× teurer als small.</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 8px 6px 0;"><code>text-embedding-ada-002</code></td>
+                            <td style="padding: 6px 8px;">1.536</td>
+                            <td style="padding: 6px 8px;">$0,10 / 1M Token</td>
+                            <td style="padding: 6px 0;">Älteres Modell - nur verwenden wenn bereits damit trainiert wurde.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="margin: 8px 0 0; color: #8f98a3; font-size: 12px;">⚠️ Nach einem Wechsel des Modells muss der gesamte Index neu trainiert werden, da die Vektoren nicht kompatibel sind.</p>
+            </div>
+
+            {{ forms.textField({
+                label: 'Startnachricht',
+                instructions: 'Erste Nachricht des Bots beim Öffnen des Chats.',
+                id: 'initialMessage',
+                name: 'initialMessage',
+                value: settings.initialMessage,
+            }) }}
+
+            {{ forms.textareaField({
+                label: 'System Prompt',
+                instructions: 'Grundlegende Anweisungen für den KI-Assistenten.',
+                id: 'systemPrompt',
+                name: 'systemPrompt',
+                value: settings.systemPrompt,
+                rows: 8,
+                class: 'code',
+                placeholder: 'Du bist ein freundlicher Assistent für AMR Eventtechnik...',
+            }) }}
+
+            {{ forms.textField({
+                label: 'Max. Kontext-Chunks',
+                instructions: 'Wie viele ähnliche Textabschnitte maximal als Kontext an die KI übergeben werden.',
+                id: 'maxContextChunks',
+                name: 'maxContextChunks',
+                value: settings.maxContextChunks,
+                type: 'number',
+                min: 1,
+                max: 20,
+                size: 5,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Mindest-Ähnlichkeit',
+                instructions: 'Schwellenwert (0.00 - 1.00) für die Cosine Similarity.\n Niedrigere Werte liefern mehr Ergebnisse, aber ggf. weniger relevante Ergebnisse.',
+                id: 'minSimilarityScore',
+                name: 'minSimilarityScore',
+                value: settings.minSimilarityScore,
+                type: 'number',
+                min: 0,
+                max: 1,
+                step: 0.05,
+                size: 7,
+            }) }}
+
+        </div>{# /tab-ai #}
+
+        {# ── Tab: Training ───────────────────────────────────── #}
+        <div id="tab-training" class="hidden">
+
+            <div class="field">
+                <div class="heading">
+                    <label>Craft-Sections indexieren</label>
+                    <div class="instructions"><p>Wähle die Sections aus, deren Inhalte für den Chatbot trainiert werden sollen.</p></div>
+                </div>
+                <div class="input">
+                    {% for section in allSections %}
+                        <div style="margin-bottom: 6px">
+                            <label>
+                                <input type="checkbox"
+                                       name="trainingSections[]"
+                                       value="{{ section.handle }}"
+                                       {% if section.handle in settings.trainingSections %}checked{% endif %}>
+                                {{ section.name }}
+                                <span class="code" style="font-size: 11px; color: #8f98a3">({{ section.handle }})</span>
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {{ forms.lightswitchField({
+                label: 'Auto-Training bei Entry-Speicherung',
+                instructions: 'Indexiert eine Entry automatisch, wenn sie im CP gespeichert wird.',
+                id: 'autoTrainOnSave',
+                name: 'autoTrainOnSave',
+                on: settings.autoTrainOnSave,
+            }) }}
+
+        </div>{# /tab-training #}
+
+        {# ── Tab: Vorschläge ─────────────────────────────────── #}
+        <div id="tab-suggestions" class="hidden">
+
+            {{ forms.lightswitchField({
+                label: 'Vorschläge aktivieren',
+                instructions: 'Zeigt voreingestellte Fragen als Buttons unterhalb der Startnachricht im Chat-Widget an.',
+                id: 'suggestionsEnabled',
+                name: 'suggestionsEnabled',
+                on: settings.suggestionsEnabled ?? true,
+            }) }}
+
+            <div class="field">
+                <div class="heading">
+                    <label for="suggestions">Voreingestellte Fragen</label>
+                    <div class="instructions"><p>Eine Frage pro Zeile. Es werden zufällig bis zu 4 Fragen angezeigt. Leere Zeilen werden ignoriert.</p></div>
+                </div>
+                <div class="input">
+                    <textarea id="suggestions" name="suggestions" rows="10"
+                              class="nicetext code fullwidth"
+                              placeholder="Was sind eure Leistungen?&#10;Wie kann ich euch kontaktieren?&#10;Welche Veranstaltungen habt ihr schon ausgestattet?&#10;Wie groß ist euer Lager?">{{ settings.suggestions | default([]) | join('\n') }}</textarea>
+                </div>
+            </div>
+
+        </div>{# /tab-suggestions #}
+
+        {# ── Tab: Logging ────────────────────────────────────── #}
+        <div id="tab-logging" class="hidden">
+
+            {{ forms.lightswitchField({
+                label: 'Nachrichtenbewertung aktivieren',
+                instructions: 'Zeigt unter jeder Bot-Antwort Daumen-hoch/runter-Buttons an. Bewertungen werden in der Datenbank gespeichert und im Dashboard ausgewertet.',
+                id: 'enableRatings',
+                name: 'enableRatings',
+                on: settings.enableRatings,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Gespräche protokollieren',
+                instructions: 'Speichert alle Unterhaltungen in der Datenbank (sichtbar unter Chatbot → Logs).',
+                id: 'logConversations',
+                name: 'logConversations',
+                on: settings.logConversations,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Log-Aufbewahrung (Tage)',
+                instructions: 'Ältere Sessions automatisch löschen. 0 = unbegrenzt aufbewahren.',
+                id: 'logRetentionDays',
+                name: 'logRetentionDays',
+                value: settings.logRetentionDays,
+                type: 'number',
+                min: 0,
+                size: 8,
+            }) }}
+
+        </div>{# /tab-logging #}
+
+        <div class="btngroup" style="margin-top: 24px">
+            <button type="submit" class="btn submit">Einstellungen speichern</button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var tabs   = document.querySelectorAll('.custom-tab');
+    var panels = ['tab-general', 'tab-ai', 'tab-training', 'tab-suggestions', 'tab-logging'];
+
+    tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            tabs.forEach(function (t) { t.classList.remove('sel'); });
+            panels.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            btn.classList.add('sel');
+            var target = document.getElementById(btn.dataset.target);
+            if (target) target.classList.remove('hidden');
+        });
+    });
+})();
+</script>
+
+{% endblock %}

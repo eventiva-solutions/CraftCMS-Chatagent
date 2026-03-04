@@ -1,0 +1,1271 @@
+{% extends "_layouts/cp" %}
+
+{% set title = "Training" %}
+{% set selectedSubnavItem = "training" %}
+
+{% block actionButton %}
+    <a href="{{ cpUrl('chatagent/settings#tab-training') }}" class="btn">Einstellungen</a>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-training">
+
+    {# ── Tab Navigation ──────────────────────────────────────────────── #}
+    <nav class="custom-tabs" style="display:flex; border-bottom: 2px solid #e3e5e8; margin-bottom: 24px; gap: 0;">
+        <button type="button" class="custom-tab sel" data-target="tab-entries">Craft Entries</button>
+        <button type="button" class="custom-tab" data-target="tab-files">Dateien</button>
+        <button type="button" class="custom-tab" data-target="tab-urls">URLs</button>
+        <button type="button" class="custom-tab" data-target="tab-qa">Q&amp;A Training</button>
+    </nav>
+    <style>
+        .custom-tab { background: none; border: none; padding: 8px 16px; cursor: pointer; color: #8f98a3; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .custom-tab:hover { color: #3f4d5a; }
+        .custom-tab.sel { color: #3f4d5a; border-bottom-color: #0d78f2; font-weight: 500; }
+    </style>
+
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {# Tab 1: Craft Entries                                               #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div id="tab-entries">
+
+        {# Description #}
+        <div class="pane" style="margin: 0 0 24px; padding: 16px 20px; background: #f3f7fc; border-left: 4px solid #0d78f2;">
+            <strong style="font-size: 14px; color: #3f4d5a;">Craft Entries</strong>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #596673; line-height: 1.6;">
+                Hier legst du fest, welche Seiteninhalte der Chatbot kennen soll. Welche Bereiche berücksichtigt werden,
+                stellst du unter <a href="{{ cpUrl('chatagent/settings') }}" style="color: #0d78f2;">Einstellungen → Training</a> ein.
+                Klicke auf <em>Jetzt trainieren</em>, um alle ausgewählten Bereiche zu verarbeiten –
+                danach kann der Chatbot Fragen zu diesen Inhalten beantworten.
+                Einzelne Einträge lassen sich über die Tabelle gezielt aktualisieren.
+            </p>
+        </div>
+
+        {# Stats tiles #}
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px">
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ stats.totalEntries }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">Indexierte Entries</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ stats.totalChunks }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">Gesamt-Chunks</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ stats.sections|length }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">
+                    Sections
+                    {% if stats.sections|length %}
+                        <span style="display: block; font-size: 11px; margin-top: 4px; font-weight: 400">{{ stats.sections|join(', ') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--link-color); line-height: 1.2">
+                    {{ stats.lastIndexed ? stats.lastIndexed|date('d.m.Y') : '–' }}
+                </div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">
+                    Letztes Training
+                    {% if stats.lastIndexed %}
+                        <span style="display: block; font-size: 11px; margin-top: 2px; font-weight: 400">{{ stats.lastIndexed|date('H:i') }} Uhr</span>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        {# Training actions #}
+        <div style="margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center">
+
+            <button id="btn-train-all" class="btn submit" type="button">
+                <span class="spinner hidden" style="margin-right: 6px"></span>
+                Jetzt trainieren
+            </button>
+
+            <button id="btn-clear-index" class="btn" type="button" style="color: #cf1124">
+                Index leeren
+            </button>
+
+            <span id="training-status" style="color: #8f98a3; font-size: 13px"></span>
+
+        </div>
+
+        {# Progress bar #}
+        <div id="training-progress" class="hidden" style="margin-bottom: 24px">
+            <div style="background: #e3e5e8; border-radius: 4px; height: 8px; overflow: hidden">
+                <div id="progress-bar" style="height: 100%; background: var(--link-color); width: 0; transition: width 0.3s ease"></div>
+            </div>
+            <div id="progress-text" style="font-size: 12px; color: #8f98a3; margin-top: 4px"></div>
+        </div>
+
+        {# Entries table #}
+        {% if entries|length %}
+            <div class="tableview">
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Entry</th>
+                            <th>Section</th>
+                            <th>Chunks</th>
+                            <th>Zuletzt indexiert</th>
+                            <th style="width: 180px">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                        <tr data-entry-id="{{ entry.entry_id }}">
+                            <td>
+                                <a href="{{ cpUrl('chatagent/training/entry/' ~ entry.entry_id) }}">
+                                    {{ entry.title }}
+                                </a>
+                            </td>
+                            <td><span class="code" style="font-size: 12px">{{ entry.section }}</span></td>
+                            <td>{{ entry.chunk_count }}</td>
+                            <td>{{ entry.last_indexed|date('d.m.Y H:i') }}</td>
+                            <td>
+                                <div style="display: flex; gap: 6px">
+                                    <a href="{{ cpUrl('chatagent/training/entry/' ~ entry.entry_id) }}" class="btn small">Ansehen</a>
+                                    <button class="btn small btn-retrain" type="button"
+                                            data-entry-id="{{ entry.entry_id }}"
+                                            data-title="{{ entry.title|escape('html_attr') }}">
+                                        Neu trainieren
+                                    </button>
+                                    <button class="btn small btn-delete-entry" type="button"
+                                            data-entry-id="{{ entry.entry_id }}"
+                                            data-title="{{ entry.title|escape('html_attr') }}"
+                                            style="color: #cf1124">
+                                        Löschen
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="pane" style="text-align: center; padding: 40px; color: #8f98a3">
+                <p>Noch keine Trainingsdaten vorhanden.</p>
+                <p>Wähle unter <a href="{{ cpUrl('chatagent/settings#tab-training') }}">Einstellungen → Training</a> die gewünschten Sections aus und klicke dann auf "Jetzt trainieren".</p>
+            </div>
+        {% endif %}
+
+    </div>{# /tab-entries #}
+
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {# Tab 2: Dateien                                                      #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div id="tab-files" class="hidden">
+
+        {# Description #}
+        <div class="pane" style="margin: 0 0 24px; padding: 16px 20px; background: #f3f7fc; border-left: 4px solid #0d78f2;">
+            <strong style="font-size: 14px; color: #3f4d5a;">Dateien</strong>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #596673; line-height: 1.6;">
+                Lade Textdateien hoch, die der Chatbot als Wissensquelle nutzen soll – z.&nbsp;B. FAQs,
+                Produktbeschreibungen oder interne Dokumente. Nach dem Hochladen stehen die Inhalte dem Chatbot sofort zur Verfügung.
+                Unterstützte Formate: <code>.txt</code>, <code>.md</code>.
+            </p>
+        </div>
+
+        {# File Stats tiles #}
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px">
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div id="file-stat-count" style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ fileStats.totalFiles }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">Indexierte Dateien</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div id="file-stat-chunks" style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ fileStats.totalChunks }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">Datei-Chunks</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--link-color); line-height: 1.2">
+                    {{ fileStats.lastIndexed ? fileStats.lastIndexed|date('d.m.Y') : '–' }}
+                </div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">
+                    Letztes Training
+                    {% if fileStats.lastIndexed %}
+                        <span style="display: block; font-size: 11px; margin-top: 2px; font-weight: 400">{{ fileStats.lastIndexed|date('H:i') }} Uhr</span>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        {# Upload Area #}
+        <div id="file-upload-area"
+             style="border: 2px dashed #d0d5dd; border-radius: 10px; padding: 40px 24px; text-align: center; margin-bottom: 24px; cursor: pointer; transition: border-color 0.2s, background 0.2s;">
+            <div style="font-size: 28px; margin-bottom: 8px">📄</div>
+            <div style="font-weight: 600; margin-bottom: 4px; color: #3f4d5a">Datei hier ablegen oder klicken</div>
+            <div style="font-size: 13px; color: #8f98a3">Unterstützte Formate: .txt, .md &nbsp;·&nbsp; Maximal 5 MB</div>
+            <input type="file" id="file-input" accept=".txt,.md" style="display:none">
+        </div>
+
+        <div id="file-upload-status" style="display:none; margin-bottom: 16px; font-size: 14px; padding: 10px 14px; border-radius: 6px"></div>
+
+        {# Files table #}
+        <div id="files-table-wrap">
+        {% if files|length %}
+            <div class="tableview">
+                <table class="data fullwidth" id="files-table">
+                    <thead>
+                        <tr>
+                            <th>Dateiname</th>
+                            <th>Typ</th>
+                            <th>Größe</th>
+                            <th>Chunks</th>
+                            <th>Zuletzt indexiert</th>
+                            <th style="width: 160px">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-tbody">
+                        {% for file in files %}
+                        <tr data-file-id="{{ file.id }}">
+                            <td>{{ file.original_name }}</td>
+                            <td><span class="code" style="font-size: 12px">.{{ file.file_type }}</span></td>
+                            <td style="color: #8f98a3; font-size: 13px">{{ (file.file_size / 1024)|round(1) }} KB</td>
+                            <td>{{ file.chunk_count }}</td>
+                            <td>{{ file.indexed_at|date('d.m.Y H:i') }}</td>
+                            <td>
+                                <div style="display: flex; gap: 6px">
+                                    <button class="btn small btn-retrain-file" type="button"
+                                            data-file-id="{{ file.id }}"
+                                            data-name="{{ file.original_name|escape('html_attr') }}">
+                                        Neu indexieren
+                                    </button>
+                                    <button class="btn small btn-delete-file" type="button"
+                                            data-file-id="{{ file.id }}"
+                                            data-name="{{ file.original_name|escape('html_attr') }}"
+                                            style="color: #cf1124">
+                                        Löschen
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div id="files-empty" class="pane" style="text-align: center; padding: 40px; color: #8f98a3">
+                <p>Noch keine Dateien hochgeladen.</p>
+                <p>Lade eine <code>.txt</code> oder <code>.md</code> Datei hoch, um sie als Wissensquelle für den Chatbot zu indexieren.</p>
+            </div>
+        {% endif %}
+        </div>
+
+    </div>{# /tab-files #}
+
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {# Tab 3: URLs                                                         #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div id="tab-urls" class="hidden">
+
+        {# Description #}
+        <div class="pane" style="margin: 0 0 24px; padding: 16px 20px; background: #f3f7fc; border-left: 4px solid #0d78f2;">
+            <strong style="font-size: 14px; color: #3f4d5a;">URLs</strong>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #596673; line-height: 1.6;">
+                Füge Webseiten hinzu, auf deren Inhalte der Chatbot antworten soll. Die Seiten werden automatisch ausgelesen
+                und ihr Inhalt dem Chatbot bekannt gemacht. Mit dem <strong>Sitemap-Import</strong> lassen sich alle Unterseiten
+                einer Website auf einmal hinzufügen. Der Chatbot kann bei passenden Fragen dann auch direkte Links zur Navigation ausgeben.
+            </p>
+        </div>
+
+        {# URL Stats tiles #}
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px">
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div id="url-stat-total" style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ crawlStats.total }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">URLs gesamt</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div id="url-stat-indexed" style="font-size: 2.2em; font-weight: bold; color: #27ab83; line-height: 1.1">{{ crawlStats.indexed }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">Indexiert</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div id="url-stat-chunks" style="font-size: 2.2em; font-weight: bold; color: var(--link-color); line-height: 1.1">{{ crawlStats.totalChunks }}</div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">URL-Chunks</div>
+            </div>
+
+            <div class="pane" style="margin: 0; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px 16px">
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--link-color); line-height: 1.2">
+                    {{ crawlStats.lastCrawled ? crawlStats.lastCrawled|date('d.m.Y') : '–' }}
+                </div>
+                <div style="color: #8f98a3; margin-top: 6px; font-size: 13px; font-weight: 600">
+                    Letzter Crawl
+                    {% if crawlStats.lastCrawled %}
+                        <span style="display: block; font-size: 11px; margin-top: 2px; font-weight: 400">{{ crawlStats.lastCrawled|date('H:i') }} Uhr</span>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        {# Sitemap Import #}
+        <div class="pane" style="padding: 16px 20px; margin-bottom: 20px">
+            <div style="font-weight: 600; margin-bottom: 10px; font-size: 14px">Sitemap importieren</div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+                <input type="url" id="sitemap-url-input" class="text" placeholder="https://example.com/sitemap.xml"
+                       style="flex: 1; min-width: 260px; padding: 8px 12px; font-size: 14px">
+                <button id="btn-import-sitemap" class="btn submit" type="button">Importieren</button>
+            </div>
+            <div id="sitemap-status" style="display:none; margin-top: 10px; font-size: 13px; padding: 8px 12px; border-radius: 5px"></div>
+        </div>
+
+        {# Manual URL Input #}
+        <div class="pane" style="padding: 16px 20px; margin-bottom: 20px">
+            <div style="font-weight: 600; margin-bottom: 6px; font-size: 14px">URLs manuell hinzufügen</div>
+            <div style="font-size: 13px; color: #8f98a3; margin-bottom: 10px">Eine URL pro Zeile.</div>
+            <textarea id="manual-urls-input" class="nicetext fullwidth" rows="4"
+                      placeholder="https://example.com/page-1&#10;https://example.com/page-2"
+                      style="font-size: 13px; font-family: monospace"></textarea>
+            <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center">
+                <button id="btn-add-urls" class="btn submit" type="button">URLs hinzufügen</button>
+                <span id="add-urls-status" style="font-size: 13px; color: #8f98a3"></span>
+            </div>
+        </div>
+
+        {# Crawl controls #}
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+            <button id="btn-crawl-all" class="btn submit" type="button">
+                <span class="spinner hidden" style="margin-right: 6px"></span>
+                Alle crawlen &amp; indexieren
+            </button>
+            <button id="btn-clear-urls" class="btn" type="button" style="color: #cf1124">
+                <span class="spinner hidden" style="margin-right: 6px"></span>
+                Alle URLs löschen
+            </button>
+            <span id="crawl-progress-text" style="font-size: 13px; color: #8f98a3"></span>
+        </div>
+
+        {# URL Table #}
+        <div id="url-table-wrap">
+        {% if crawlUrls|length %}
+            <div class="tableview">
+                <table class="data fullwidth" id="url-table">
+                    <thead>
+                        <tr>
+                            <th>URL</th>
+                            <th>Titel</th>
+                            <th style="width:90px">Status</th>
+                            <th style="width:60px">Chunks</th>
+                            <th style="width:130px">Gecrawlt</th>
+                            <th style="width:130px">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="url-tbody">
+                        {% for row in crawlUrls %}
+                        <tr data-url-id="{{ row.id }}">
+                            <td style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                                <a href="{{ row.url }}" target="_blank" rel="noopener" style="font-size:13px">{{ row.url }}</a>
+                            </td>
+                            <td style="font-size:13px; color:#596673">{{ row.title ?: '–' }}</td>
+                            <td><span class="url-status-badge url-status-{{ row.status }}">{{ row.status }}</span></td>
+                            <td>{{ row.chunk_count ?: '–' }}</td>
+                            <td style="font-size:12px; color:#8f98a3">{{ row.last_crawled ? row.last_crawled|date('d.m. H:i') : '–' }}</td>
+                            <td>
+                                <div style="display:flex; gap:6px">
+                                    <a href="{{ cpUrl('chatagent/training/url/' ~ row.id) }}"
+                                       class="btn small">Ansehen</a>
+                                    <button class="btn small btn-crawl-single" type="button"
+                                            data-url-id="{{ row.id }}">Neu crawlen</button>
+                                    <button class="btn small btn-delete-url" type="button"
+                                            data-url-id="{{ row.id }}"
+                                            style="color:#cf1124">Löschen</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div id="url-empty" class="pane" style="text-align:center; padding:40px; color:#8f98a3">
+                <p>Noch keine URLs hinterlegt.</p>
+                <p>Importiere eine Sitemap oder füge URLs manuell hinzu.</p>
+            </div>
+        {% endif %}
+        </div>
+
+    </div>{# /tab-urls #}
+
+    {# ══════════════════════════════════════════════════════════════════ #}
+    {# Tab 4: Q&A Training                                                #}
+    {# ══════════════════════════════════════════════════════════════════ #}
+    <div id="tab-qa" class="hidden">
+
+        {# Description #}
+        <div class="pane" style="margin: 0 0 24px; padding: 16px 20px; background: #f3f7fc; border-left: 4px solid #0d78f2;">
+            <strong style="font-size: 14px; color: #3f4d5a;">Q&amp;A Training</strong>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #596673; line-height: 1.6;">
+                Definiere eigene Frage-Antwort-Paare, die der Chatbot direkt als Wissen nutzt. Importiere Paare aus den
+                <a href="{{ cpUrl('chatagent/logs') }}" style="color: #0d78f2;">Gesprächslogs</a> oder lege sie manuell an.
+                Aktive Paare werden sofort in die Vektordatenbank indexiert und fließen in die Bot-Antworten ein.
+            </p>
+        </div>
+
+        {# Stats #}
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px">
+            <div class="pane" style="margin:0; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 16px">
+                <div id="qa-stat-total" style="font-size:2.2em; font-weight:bold; color:var(--link-color); line-height:1.1">{{ qaStats.total }}</div>
+                <div style="color:#8f98a3; margin-top:6px; font-size:13px; font-weight:600">Q&amp;A-Paare gesamt</div>
+            </div>
+            <div class="pane" style="margin:0; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 16px">
+                <div style="font-size:2.2em; font-weight:bold; color:#27ab83; line-height:1.1">{{ qaStats.active }}</div>
+                <div style="color:#8f98a3; margin-top:6px; font-size:13px; font-weight:600">Aktiv (indexiert)</div>
+            </div>
+            <div class="pane" style="margin:0; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 16px">
+                <div style="font-size:2.2em; font-weight:bold; color:#596673; line-height:1.1">{{ qaStats.fromLog }}</div>
+                <div style="color:#8f98a3; margin-top:6px; font-size:13px; font-weight:600">Aus Logs importiert</div>
+            </div>
+            <div class="pane" style="margin:0; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 16px">
+                <div style="font-size:1em; font-weight:500; color:#596673; line-height:1.4">
+                    {% if qaStats.lastSaved %}{{ qaStats.lastSaved | date('d.m.Y') }}<br><span style="font-size:12px; color:#8f98a3">{{ qaStats.lastSaved | date('H:i') }} Uhr</span>{% else %}–{% endif %}
+                </div>
+                <div style="color:#8f98a3; margin-top:6px; font-size:13px; font-weight:600">Zuletzt gespeichert</div>
+            </div>
+        </div>
+
+        {# Add new Q&A pair form #}
+        <div class="pane" style="margin-bottom: 24px; padding: 20px 24px">
+            <h2 style="margin: 0 0 16px; font-size: 15px; color: #3f4d5a;">Neues Q&amp;A-Paar anlegen</h2>
+            <div style="display: grid; gap: 14px">
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Frage</label>
+                    <input type="text" id="qa-new-question" placeholder="z.B. Wie viele mitarbeiter habt ihr?" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; box-sizing:border-box">
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Antwort</label>
+                    <textarea id="qa-new-answer" rows="4" placeholder="Die gewünschte Bot-Antwort auf diese Frage…" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; resize:vertical; box-sizing:border-box; font-family:inherit"></textarea>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px">
+                    <button type="button" id="btn-save-qa" class="btn submit">Speichern &amp; indexieren</button>
+                    <span id="qa-save-status" style="font-size:13px; color:#596673"></span>
+                </div>
+            </div>
+        </div>
+
+        {# Q&A Table #}
+        <div id="qa-table-wrap">
+        {% if qaPairs | length %}
+            <div class="tableview">
+            <table class="data fullwidth" id="qa-table">
+                <thead>
+                    <tr>
+                        <th style="width:30%">Frage</th>
+                        <th>Antwort</th>
+                        <th style="width:80px; text-align:center">Quelle</th>
+                        <th style="width:80px; text-align:center">Status</th>
+                        <th style="width:160px">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="qa-tbody">
+                    {% for pair in qaPairs %}
+                    <tr data-qa-id="{{ pair.id }}" style="{{ not pair.is_active ? 'opacity:0.5' : '' }}">
+                        <td style="font-size:13px; vertical-align:top; padding-top:10px">
+                            <span class="qa-question-text">{{ pair.question | e }}</span>
+                        </td>
+                        <td style="font-size:13px; vertical-align:top; padding-top:10px">
+                            <span class="qa-answer-text" style="color:#596673">{{ pair.answer | e | nl2br }}</span>
+                        </td>
+                        <td style="text-align:center; vertical-align:top; padding-top:10px">
+                            {% if pair.source == 'log' %}
+                                <span class="qa-source-badge qa-source-log" title="Aus Gesprächslog importiert">Log</span>
+                            {% else %}
+                                <span class="qa-source-badge qa-source-manual">Manuell</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center; vertical-align:top; padding-top:10px">
+                            <button type="button" class="btn-qa-toggle" data-qa-id="{{ pair.id }}" data-active="{{ pair.is_active ? '1' : '0' }}" title="{{ pair.is_active ? 'Deaktivieren' : 'Aktivieren' }}">
+                                <span class="qa-status-indicator" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:{{ pair.is_active ? '#27ab83' : '#d0d5dd' }}; margin-right:4px"></span>{{ pair.is_active ? 'Aktiv' : 'Inaktiv' }}
+                            </button>
+                        </td>
+                        <td style="vertical-align:top; padding-top:8px">
+                            <button type="button" class="btn small btn-qa-edit"
+                                data-qa-id="{{ pair.id }}"
+                                data-question="{{ pair.question | e('html_attr') }}"
+                                data-answer="{{ pair.answer | e('html_attr') }}">Bearbeiten</button>
+                            <button type="button" class="btn small btn-qa-delete" data-qa-id="{{ pair.id }}" style="margin-left:4px; color:#cf1124">Löschen</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        {% else %}
+            <div id="qa-empty" class="pane" style="text-align:center; padding:40px; color:#8f98a3">
+                <p>Noch keine Q&amp;A-Paare angelegt.</p>
+                <p>Erstelle dein erstes Paar oder importiere es aus den <a href="{{ cpUrl('chatagent/logs') }}" style="color:#0d78f2">Gesprächslogs</a>.</p>
+            </div>
+        {% endif %}
+        </div>
+
+    </div>{# /tab-qa #}
+
+    {# ── Q&A Edit Modal ─────────────────────────────────────────────── #}
+    <div id="qa-edit-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.5); align-items:center; justify-content:center">
+        <div style="background:#fff; border-radius:8px; padding:28px 32px; width:600px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25)">
+            <h2 style="margin:0 0 20px; font-size:16px; color:#3f4d5a">Q&amp;A-Paar bearbeiten</h2>
+            <input type="hidden" id="qa-edit-id" value="">
+            <div style="margin-bottom:14px">
+                <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Frage</label>
+                <input type="text" id="qa-edit-question" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:20px">
+                <label style="display:block; font-size:12px; font-weight:600; color:#596673; margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em">Antwort</label>
+                <textarea id="qa-edit-answer" rows="6" style="width:100%; padding:8px 12px; border:1px solid #d0d5dd; border-radius:5px; font-size:14px; resize:vertical; box-sizing:border-box; font-family:inherit"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end">
+                <button type="button" id="qa-edit-cancel" class="btn">Abbrechen</button>
+                <button type="button" id="qa-edit-save" class="btn submit">Speichern &amp; neu indexieren</button>
+                <span id="qa-edit-status" style="font-size:13px; color:#596673; align-self:center"></span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.url-status-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.url-status-pending  { background: #FEF3C7; color: #92400E; }
+.url-status-indexed  { background: #D1FAE5; color: #065F46; }
+.url-status-error    { background: #FEE2E2; color: #991B1B; }
+.qa-source-badge { display:inline-block; font-size:11px; padding:2px 7px; border-radius:10px; font-weight:600; }
+.qa-source-log    { background:#EDE9FE; color:#5B21B6; }
+.qa-source-manual { background:#E0F2FE; color:#0369A1; }
+.btn-qa-toggle { background:none; border:1px solid #e3e5e8; border-radius:4px; padding:2px 8px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; white-space:nowrap; }
+.btn-qa-toggle:hover { background:#f3f4f6; }
+</style>
+
+<script>
+(function () {
+    var csrfToken = '{{ craft.app.request.csrfToken }}';
+    var baseUrl    = '{{ cpUrl('chatagent/training') }}';
+
+    // ── Tab switching ────────────────────────────────────────────────
+    var tabs   = document.querySelectorAll('.custom-tab');
+    var panels = ['tab-entries', 'tab-files', 'tab-urls', 'tab-qa'];
+
+    tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            tabs.forEach(function (t) { t.classList.remove('sel'); });
+            panels.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            btn.classList.add('sel');
+            var target = document.getElementById(btn.dataset.target);
+            if (target) target.classList.remove('hidden');
+        });
+    });
+
+    // ── Craft Entry actions ──────────────────────────────────────────
+
+    function apiPost(endpoint, data, cb) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', baseUrl + '/' + endpoint);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        xhr.onload = function () {
+            try { cb(null, JSON.parse(xhr.responseText)); }
+            catch (e) { cb('Ungültige Serverantwort'); }
+        };
+        xhr.onerror = function () { cb('Netzwerkfehler'); };
+        xhr.send(JSON.stringify(Object.assign({ CRAFT_CSRF_TOKEN: csrfToken }, data)));
+    }
+
+    function setStatus(msg, color) {
+        var el = document.getElementById('training-status');
+        el.textContent = msg;
+        el.style.color = color || '#8f98a3';
+    }
+
+    // Train all
+    document.getElementById('btn-train-all').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        btn.querySelector('.spinner').classList.remove('hidden');
+        document.getElementById('training-progress').classList.remove('hidden');
+        document.getElementById('progress-bar').style.width = '10%';
+        setStatus('Training läuft …');
+
+        apiPost('train', {}, function (err, data) {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+            document.getElementById('progress-bar').style.width = '100%';
+
+            if (err || !data.success) {
+                setStatus('Fehler: ' + (err || data.error), '#cf1124');
+            } else {
+                var msg = data.message || (data.jobCount + ' Jobs in die Queue eingereiht.');
+                if (data.errors && data.errors.length) {
+                    msg += ' (' + data.errors.length + ' Warnungen)';
+                }
+                setStatus(msg + ' → Fortschritt unter Dienstprogramme → Warteschlange.', '#27ab83');
+            }
+        });
+    });
+
+    // Clear index
+    document.getElementById('btn-clear-index').addEventListener('click', function () {
+        if (!confirm('Wirklich den gesamten Index leeren? Alle Trainingsdaten werden gelöscht.')) return;
+        var btn = this;
+        btn.disabled = true;
+        setStatus('Index wird geleert …');
+
+        apiPost('clear-index', {}, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                setStatus('Fehler: ' + (err || data.error), '#cf1124');
+            } else {
+                setStatus(data.deleted + ' Chunks gelöscht. Seite wird neu geladen …', '#27ab83');
+                setTimeout(function () { location.reload(); }, 1200);
+            }
+        });
+    });
+
+    // Re-train single entry
+    document.querySelectorAll('.btn-retrain').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var entryId = btn.dataset.entryId;
+            var title   = btn.dataset.title;
+            btn.disabled = true;
+            btn.textContent = '…';
+
+            apiPost('train-entry', { entryId: entryId }, function (err, data) {
+                btn.disabled = false;
+                btn.textContent = 'Neu trainieren';
+                if (err || !data.success) {
+                    alert('Fehler: ' + (err || data.error));
+                } else {
+                    alert(data.message || '"' + title + '" Training-Job in die Queue eingereiht.');
+                }
+            });
+        });
+    });
+
+    // Delete entry chunks
+    document.querySelectorAll('.btn-delete-entry').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var entryId = btn.dataset.entryId;
+            var title   = btn.dataset.title;
+            if (!confirm('Trainingsdaten für "' + title + '" löschen?')) return;
+            btn.disabled = true;
+
+            apiPost('delete-entry', { entryId: entryId }, function (err, data) {
+                btn.disabled = false;
+                if (err || !data.success) {
+                    alert('Fehler: ' + (err || data.error));
+                } else {
+                    var row = document.querySelector('tr[data-entry-id="' + entryId + '"]');
+                    if (row) row.remove();
+                }
+            });
+        });
+    });
+
+    // ── File actions ─────────────────────────────────────────────────
+
+    var uploadArea  = document.getElementById('file-upload-area');
+    var fileInput   = document.getElementById('file-input');
+
+    // Click on upload area → open file picker
+    uploadArea.addEventListener('click', function () { fileInput.click(); });
+
+    // Drag & Drop
+    uploadArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#0d78f2';
+        uploadArea.style.background  = 'rgba(13,120,242,0.04)';
+    });
+    uploadArea.addEventListener('dragleave', function () {
+        uploadArea.style.borderColor = '#d0d5dd';
+        uploadArea.style.background  = '';
+    });
+    uploadArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#d0d5dd';
+        uploadArea.style.background  = '';
+        if (e.dataTransfer.files.length > 0) {
+            uploadFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+            uploadFile(fileInput.files[0]);
+            fileInput.value = '';
+        }
+    });
+
+    function showFileStatus(msg, type) {
+        var el = document.getElementById('file-upload-status');
+        el.textContent = msg;
+        el.style.display = '';
+        if (type === 'success') {
+            el.style.background = 'rgba(39,171,131,0.1)';
+            el.style.color = '#1a6e52';
+            el.style.border = '1px solid rgba(39,171,131,0.3)';
+        } else if (type === 'error') {
+            el.style.background = 'rgba(207,17,36,0.08)';
+            el.style.color = '#cf1124';
+            el.style.border = '1px solid rgba(207,17,36,0.2)';
+        } else {
+            el.style.background = '#f9fafb';
+            el.style.color = '#8f98a3';
+            el.style.border = '1px solid #e3e5e8';
+        }
+    }
+
+    function uploadFile(file) {
+        var allowedExts = ['txt', 'md'];
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (!allowedExts.includes(ext)) {
+            showFileStatus('Fehler: Nur .txt und .md Dateien sind erlaubt.', 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showFileStatus('Fehler: Datei zu groß (max. 5 MB).', 'error');
+            return;
+        }
+
+        showFileStatus('"' + file.name + '" wird hochgeladen und trainiert …', 'info');
+        document.getElementById('file-upload-area').style.opacity = '0.5';
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('CRAFT_CSRF_TOKEN', csrfToken);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', baseUrl + '/upload-file');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        xhr.onload = function () {
+            document.getElementById('file-upload-area').style.opacity = '';
+            document.getElementById('file-upload-area').style.borderColor = '#d0d5dd';
+            document.getElementById('file-upload-area').style.background = '';
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    showFileStatus(data.message, 'success');
+                    appendFileRow(data.fileId, file.name, ext, file.size, data.chunkCount);
+                    updateFileStats(1, data.chunkCount);
+                } else {
+                    showFileStatus('Fehler: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showFileStatus('Ungültige Serverantwort.', 'error');
+            }
+        };
+        xhr.onerror = function () {
+            document.getElementById('file-upload-area').style.opacity = '';
+            showFileStatus('Netzwerkfehler beim Upload.', 'error');
+        };
+        xhr.send(formData);
+    }
+
+    function appendFileRow(fileId, name, ext, size, chunks) {
+        var empty = document.getElementById('files-empty');
+        if (empty) empty.remove();
+
+        var tbody = document.getElementById('files-tbody');
+        if (!tbody) {
+            // Create table if it doesn't exist yet
+            var wrap = document.getElementById('files-table-wrap');
+            wrap.innerHTML = '<div class="tableview"><table class="data fullwidth" id="files-table"><thead><tr><th>Dateiname</th><th>Typ</th><th>Größe</th><th>Chunks</th><th>Zuletzt indexiert</th><th style="width:160px">Aktionen</th></tr></thead><tbody id="files-tbody"></tbody></table></div>';
+            tbody = document.getElementById('files-tbody');
+        }
+
+        var now = new Date();
+        var dateStr = String(now.getDate()).padStart(2,'0') + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        var sizeKb  = (size / 1024).toFixed(1);
+
+        var tr = document.createElement('tr');
+        tr.dataset.fileId = fileId;
+        tr.innerHTML =
+            '<td>' + escHtml(name) + '</td>' +
+            '<td><span class="code" style="font-size:12px">.' + escHtml(ext) + '</span></td>' +
+            '<td style="color:#8f98a3;font-size:13px">' + sizeKb + ' KB</td>' +
+            '<td>' + chunks + '</td>' +
+            '<td>' + dateStr + '</td>' +
+            '<td><div style="display:flex;gap:6px">' +
+                '<button class="btn small btn-retrain-file" type="button" data-file-id="' + fileId + '" data-name="' + escAttr(name) + '">Neu indexieren</button>' +
+                '<button class="btn small btn-delete-file" type="button" data-file-id="' + fileId + '" data-name="' + escAttr(name) + '" style="color:#cf1124">Löschen</button>' +
+            '</div></td>';
+        tbody.prepend(tr);
+        bindFileRowButtons(tr);
+    }
+
+    function updateFileStats(fileDelta, chunkDelta) {
+        var countEl  = document.getElementById('file-stat-count');
+        var chunksEl = document.getElementById('file-stat-chunks');
+        if (countEl)  countEl.textContent  = (parseInt(countEl.textContent)  || 0) + fileDelta;
+        if (chunksEl) chunksEl.textContent = (parseInt(chunksEl.textContent) || 0) + chunkDelta;
+    }
+
+    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+    function bindFileRowButtons(row) {
+        var retrainBtn = row.querySelector('.btn-retrain-file');
+        var deleteBtn  = row.querySelector('.btn-delete-file');
+        if (retrainBtn) retrainBtn.addEventListener('click', retrainFileHandler);
+        if (deleteBtn)  deleteBtn.addEventListener('click', deleteFileHandler);
+    }
+
+    function retrainFileHandler() {
+        var btn    = this;
+        var fileId = btn.dataset.fileId;
+        var name   = btn.dataset.name;
+        btn.disabled = true;
+        btn.textContent = '…';
+
+        apiPost('retrain-file', { fileId: fileId }, function (err, data) {
+            btn.disabled = false;
+            btn.textContent = 'Neu indexieren';
+            if (err || !data.success) {
+                alert('Fehler: ' + (err || data.error));
+            } else {
+                // Update chunk count in row
+                var row = document.querySelector('tr[data-file-id="' + fileId + '"]');
+                if (row) {
+                    var cells = row.querySelectorAll('td');
+                    if (cells[3]) cells[3].textContent = data.chunkCount;
+                    var now = new Date();
+                    if (cells[4]) cells[4].textContent = String(now.getDate()).padStart(2,'0') + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+                }
+                showFileStatus(data.message, 'success');
+            }
+        });
+    }
+
+    function deleteFileHandler() {
+        var btn    = this;
+        var fileId = btn.dataset.fileId;
+        var name   = btn.dataset.name;
+        if (!confirm('Datei "' + name + '" und ihre Trainingsdaten löschen?')) return;
+        btn.disabled = true;
+
+        apiPost('delete-file', { fileId: fileId }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                alert('Fehler: ' + (err || data.error));
+            } else {
+                var row = document.querySelector('tr[data-file-id="' + fileId + '"]');
+                if (row) {
+                    var chunks = parseInt(row.querySelectorAll('td')[3].textContent) || 0;
+                    updateFileStats(-1, -chunks);
+                    row.remove();
+                }
+            }
+        });
+    }
+
+    // Bind existing file row buttons
+    document.querySelectorAll('.btn-retrain-file').forEach(function (btn) {
+        btn.addEventListener('click', retrainFileHandler);
+    });
+    document.querySelectorAll('.btn-delete-file').forEach(function (btn) {
+        btn.addEventListener('click', deleteFileHandler);
+    });
+
+    // ── URL / Crawl actions ───────────────────────────────────────────
+
+    function showSitemapStatus(msg, type) {
+        var el = document.getElementById('sitemap-status');
+        el.textContent = msg;
+        el.style.display = '';
+        el.style.background = type === 'success' ? 'rgba(39,171,131,0.1)' : (type === 'error' ? 'rgba(207,17,36,0.08)' : '#f9fafb');
+        el.style.color      = type === 'success' ? '#1a6e52' : (type === 'error' ? '#cf1124' : '#596673');
+        el.style.border     = type === 'success' ? '1px solid rgba(39,171,131,0.3)' : (type === 'error' ? '1px solid rgba(207,17,36,0.2)' : '1px solid #e3e5e8');
+    }
+
+    function statusBadgeHtml(status) {
+        return '<span class="url-status-badge url-status-' + status + '">' + escHtml(status) + '</span>';
+    }
+
+    function nowDateStr() {
+        var d = new Date();
+        return String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '. ' +
+               String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function appendUrlRow(urlId, url, title, status, chunkCount) {
+        var empty = document.getElementById('url-empty');
+        if (empty) empty.remove();
+
+        var tbody = document.getElementById('url-tbody');
+        if (!tbody) {
+            document.getElementById('url-table-wrap').innerHTML =
+                '<div class="tableview"><table class="data fullwidth" id="url-table">' +
+                '<thead><tr><th>URL</th><th>Titel</th><th style="width:90px">Status</th><th style="width:60px">Chunks</th><th style="width:130px">Gecrawlt</th><th style="width:130px">Aktionen</th></tr></thead>' +
+                '<tbody id="url-tbody"></tbody></table></div>';
+            tbody = document.getElementById('url-tbody');
+        }
+        var tr = document.createElement('tr');
+        tr.dataset.urlId = urlId;
+        tr.innerHTML =
+            '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+                '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" style="font-size:13px">' + escHtml(url) + '</a>' +
+            '</td>' +
+            '<td style="font-size:13px;color:#596673">' + (title ? escHtml(title) : '–') + '</td>' +
+            '<td class="url-status-cell">' + statusBadgeHtml(status) + '</td>' +
+            '<td class="url-chunk-cell">' + (chunkCount || '–') + '</td>' +
+            '<td style="font-size:12px;color:#8f98a3" class="url-date-cell">–</td>' +
+            '<td><div style="display:flex;gap:6px">' +
+                '<a href="{{ cpUrl("chatbot/training/url") }}/' + urlId + '" class="btn small">Ansehen</a>' +
+                '<button class="btn small btn-crawl-single" type="button" data-url-id="' + urlId + '">Neu crawlen</button>' +
+                '<button class="btn small btn-delete-url" type="button" data-url-id="' + urlId + '" style="color:#cf1124">Löschen</button>' +
+            '</div></td>';
+        tbody.prepend(tr);
+        bindUrlRowButtons(tr);
+    }
+
+    function updateUrlRow(urlId, title, status, chunkCount) {
+        var row = document.querySelector('tr[data-url-id="' + urlId + '"]');
+        if (!row) return;
+        var statusCell = row.querySelector('.url-status-cell');
+        var chunkCell  = row.querySelector('.url-chunk-cell');
+        var dateCell   = row.querySelector('.url-date-cell');
+        var titleCell  = row.querySelectorAll('td')[1];
+        if (statusCell) statusCell.innerHTML = statusBadgeHtml(status);
+        if (chunkCell)  chunkCell.textContent = chunkCount || '–';
+        if (dateCell)   dateCell.textContent  = nowDateStr();
+        if (titleCell && title) titleCell.textContent = title;
+    }
+
+    function updateUrlStats(delta) {
+        ['url-stat-total', 'url-stat-indexed', 'url-stat-chunks'].forEach(function(id, i) {
+            // handled after full crawl; keep simple
+        });
+    }
+
+    function bindUrlRowButtons(row) {
+        var crawlBtn  = row.querySelector('.btn-crawl-single');
+        var deleteBtn = row.querySelector('.btn-delete-url');
+        if (crawlBtn)  crawlBtn.addEventListener('click',  crawlSingleHandler);
+        if (deleteBtn) deleteBtn.addEventListener('click', deleteUrlHandler);
+    }
+
+    function crawlSingleHandler() {
+        var btn   = this;
+        var urlId = btn.dataset.urlId;
+        btn.disabled = true;
+        btn.textContent = '…';
+
+        apiPost('crawl-url', { urlId: urlId }, function (err, data) {
+            btn.disabled = false;
+            btn.textContent = 'Neu crawlen';
+            if (!err && data.success) {
+                alert('URL zur Warteschlange hinzugefügt. Der Fortschritt ist im Queue Manager sichtbar.');
+            } else {
+                alert('Fehler: ' + (data && data.error ? data.error : 'Unbekannt'));
+            }
+        });
+    }
+
+    function deleteUrlHandler() {
+        var btn   = this;
+        var urlId = btn.dataset.urlId;
+        if (!confirm('URL und ihre Indexdaten löschen?')) return;
+        btn.disabled = true;
+        apiPost('delete-url', { urlId: urlId }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) { alert('Fehler: ' + (err || data.error)); return; }
+            var row = document.querySelector('tr[data-url-id="' + urlId + '"]');
+            if (row) row.remove();
+        });
+    }
+
+    // Bind existing URL row buttons on page load
+    document.querySelectorAll('.btn-crawl-single').forEach(function (btn) {
+        btn.addEventListener('click', crawlSingleHandler);
+    });
+    document.querySelectorAll('.btn-delete-url').forEach(function (btn) {
+        btn.addEventListener('click', deleteUrlHandler);
+    });
+
+    // Import Sitemap
+    document.getElementById('btn-import-sitemap').addEventListener('click', function () {
+        var btn         = this;
+        var sitemapUrl  = document.getElementById('sitemap-url-input').value.trim();
+        if (!sitemapUrl) { showSitemapStatus('Bitte eine Sitemap-URL eingeben.', 'error'); return; }
+        btn.disabled = true;
+        btn.textContent = '…';
+        showSitemapStatus('Sitemap wird geladen …', 'info');
+
+        apiPost('import-sitemap', { sitemapUrl: sitemapUrl }, function (err, data) {
+            btn.disabled = false;
+            btn.textContent = 'Importieren';
+            if (err || !data.success) {
+                showSitemapStatus('Fehler: ' + (err || data.error), 'error');
+            } else {
+                showSitemapStatus(data.message, 'success');
+                // Refresh URL list: append new rows
+                if (data.urls) {
+                    data.urls.forEach(function (row) {
+                        if (!document.querySelector('tr[data-url-id="' + row.id + '"]')) {
+                            appendUrlRow(row.id, row.url, row.title, row.status, row.chunk_count);
+                        }
+                    });
+                }
+                // Update total count
+                var totalEl = document.getElementById('url-stat-total');
+                if (totalEl && data.added) totalEl.textContent = (parseInt(totalEl.textContent) || 0) + data.added;
+            }
+        });
+    });
+
+    // Add Manual URLs
+    document.getElementById('btn-add-urls').addEventListener('click', function () {
+        var btn    = this;
+        var raw    = document.getElementById('manual-urls-input').value;
+        if (!raw.trim()) { document.getElementById('add-urls-status').textContent = 'Bitte URLs eingeben.'; return; }
+        btn.disabled = true;
+        apiPost('add-urls', { urls: raw }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                document.getElementById('add-urls-status').textContent = 'Fehler: ' + (err || data.error);
+            } else {
+                document.getElementById('add-urls-status').textContent = data.message;
+                document.getElementById('manual-urls-input').value = '';
+                // Reload to show new rows (simple approach)
+                setTimeout(function () { location.reload(); }, 800);
+            }
+        });
+    });
+
+    // Clear All URLs — single server-side operation
+    document.getElementById('btn-clear-urls').addEventListener('click', function () {
+        if (!confirm('Alle URLs löschen?')) return;
+        var btn = this;
+        btn.disabled = true;
+        btn.querySelector('.spinner').classList.remove('hidden');
+
+        apiPost('clear-urls', {}, function (err, data) {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+            if (!err && data.success) {
+                location.reload();
+            } else {
+                alert('Fehler: ' + (data && data.error ? data.error : 'Unbekannt'));
+            }
+        });
+    });
+
+    // Crawl All → push all URLs to Craft queue
+    document.getElementById('btn-crawl-all').addEventListener('click', function () {
+        var btn  = this;
+        var rows = Array.from(document.querySelectorAll('#url-tbody tr[data-url-id]'));
+        if (!rows.length) {
+            document.getElementById('crawl-progress-text').textContent = 'Keine URLs vorhanden.';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.querySelector('.spinner').classList.remove('hidden');
+        document.getElementById('crawl-progress-text').textContent = 'Wird zur Warteschlange hinzugefügt…';
+
+        apiPost('crawl-all', {}, function (err, data) {
+            btn.disabled = false;
+            btn.querySelector('.spinner').classList.add('hidden');
+            if (!err && data.success) {
+                document.getElementById('crawl-progress-text').textContent =
+                    data.queued + ' URL(s) in die Warteschlange eingereiht.';
+            } else {
+                document.getElementById('crawl-progress-text').textContent =
+                    'Fehler: ' + (data && data.error ? data.error : 'Unbekannt');
+            }
+        });
+    });
+
+    // ── Q&A Actions ───────────────────────────────────────────────────
+
+    function showQaStatus(msg, type) {
+        var el = document.getElementById('qa-save-status');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.color = type === 'error' ? '#cf1124' : type === 'success' ? '#27ab83' : '#596673';
+    }
+
+    function appendQaRow(qaId, question, answer, source, isActive) {
+        var empty = document.getElementById('qa-empty');
+        if (empty) empty.remove();
+
+        var wrap = document.getElementById('qa-table-wrap');
+        var tbody = document.getElementById('qa-tbody');
+        if (!tbody) {
+            wrap.innerHTML = '<div class="tableview"><table class="data fullwidth" id="qa-table"><thead><tr><th style="width:30%">Frage</th><th>Antwort</th><th style="width:80px;text-align:center">Quelle</th><th style="width:80px;text-align:center">Status</th><th style="width:160px">Aktionen</th></tr></thead><tbody id="qa-tbody"></tbody></table></div>';
+            tbody = document.getElementById('qa-tbody');
+        }
+
+        var srcBadge = source === 'log'
+            ? '<span class="qa-source-badge qa-source-log">Log</span>'
+            : '<span class="qa-source-badge qa-source-manual">Manuell</span>';
+
+        var tr = document.createElement('tr');
+        tr.dataset.qaId = qaId;
+        tr.innerHTML =
+            '<td style="font-size:13px;vertical-align:top;padding-top:10px"><span class="qa-question-text">' + escHtml(question) + '</span></td>' +
+            '<td style="font-size:13px;vertical-align:top;padding-top:10px"><span class="qa-answer-text" style="color:#596673">' + escHtml(answer).replace(/\n/g,'<br>') + '</span></td>' +
+            '<td style="text-align:center;vertical-align:top;padding-top:10px">' + srcBadge + '</td>' +
+            '<td style="text-align:center;vertical-align:top;padding-top:10px"><button type="button" class="btn-qa-toggle" data-qa-id="' + qaId + '" data-active="1" title="Deaktivieren"><span class="qa-status-indicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#27ab83;margin-right:4px"></span>Aktiv</button></td>' +
+            '<td style="vertical-align:top;padding-top:8px"><button type="button" class="btn small btn-qa-edit" data-qa-id="' + qaId + '" data-question="' + escAttr(question) + '" data-answer="' + escAttr(answer) + '">Bearbeiten</button>' +
+            '<button type="button" class="btn small btn-qa-delete" data-qa-id="' + qaId + '" style="margin-left:4px;color:#cf1124">Löschen</button></td>';
+        tbody.insertBefore(tr, tbody.firstChild);
+        attachQaRowEvents(tr);
+    }
+
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function attachQaRowEvents(row) {
+        var editBtn   = row.querySelector('.btn-qa-edit');
+        var deleteBtn = row.querySelector('.btn-qa-delete');
+        var toggleBtn = row.querySelector('.btn-qa-toggle');
+        if (editBtn)   editBtn.addEventListener('click',   handleQaEdit);
+        if (deleteBtn) deleteBtn.addEventListener('click', handleQaDelete);
+        if (toggleBtn) toggleBtn.addEventListener('click', handleQaToggle);
+    }
+
+    function handleQaEdit() {
+        var qaId     = this.dataset.qaId;
+        var question = this.dataset.question;
+        var answer   = this.dataset.answer;
+        document.getElementById('qa-edit-id').value       = qaId;
+        document.getElementById('qa-edit-question').value = question;
+        document.getElementById('qa-edit-answer').value   = answer;
+        document.getElementById('qa-edit-status').textContent = '';
+        document.getElementById('qa-edit-modal').style.display = 'flex';
+    }
+
+    function handleQaDelete() {
+        var qaId = this.dataset.qaId;
+        if (!confirm('Q&A-Paar wirklich löschen?')) return;
+        var btn = this;
+        btn.disabled = true;
+        apiPost('delete-qa-pair', { qaId: qaId }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                alert('Fehler: ' + (err || data.error));
+            } else {
+                var row = document.querySelector('tr[data-qa-id="' + qaId + '"]');
+                if (row) row.remove();
+                var total = document.getElementById('qa-stat-total');
+                if (total) total.textContent = Math.max(0, (parseInt(total.textContent) || 0) - 1);
+            }
+        });
+    }
+
+    function handleQaToggle() {
+        var qaId   = this.dataset.qaId;
+        var active = this.dataset.active === '1';
+        var btn    = this;
+        btn.disabled = true;
+        apiPost('toggle-qa-pair', { qaId: qaId, active: active ? 0 : 1 }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                alert('Fehler: ' + (err || data.error));
+                return;
+            }
+            var nowActive  = !active;
+            btn.dataset.active = nowActive ? '1' : '0';
+            btn.title      = nowActive ? 'Deaktivieren' : 'Aktivieren';
+            btn.innerHTML  = '<span class="qa-status-indicator" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (nowActive ? '#27ab83' : '#d0d5dd') + ';margin-right:4px"></span>' + (nowActive ? 'Aktiv' : 'Inaktiv');
+            var row = document.querySelector('tr[data-qa-id="' + qaId + '"]');
+            if (row) row.style.opacity = nowActive ? '' : '0.5';
+        });
+    }
+
+    // Attach events to existing rows
+    document.querySelectorAll('#qa-tbody tr[data-qa-id]').forEach(attachQaRowEvents);
+
+    // Save new Q&A pair
+    document.getElementById('btn-save-qa').addEventListener('click', function () {
+        var question = document.getElementById('qa-new-question').value.trim();
+        var answer   = document.getElementById('qa-new-answer').value.trim();
+        if (!question || !answer) {
+            showQaStatus('Bitte Frage und Antwort ausfüllen.', 'error');
+            return;
+        }
+        var btn = this;
+        btn.disabled = true;
+        showQaStatus('Wird gespeichert…', '');
+        apiPost('save-qa-pair', { question: question, answer: answer, source: 'manual' }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                showQaStatus('Fehler: ' + (err || data.error), 'error');
+            } else {
+                showQaStatus(data.warning || data.message, data.warning ? 'warn' : 'success');
+                document.getElementById('qa-new-question').value = '';
+                document.getElementById('qa-new-answer').value   = '';
+                appendQaRow(data.qaId, question, answer, 'manual', true);
+                var total = document.getElementById('qa-stat-total');
+                if (total) total.textContent = (parseInt(total.textContent) || 0) + 1;
+            }
+        });
+    });
+
+    // Edit modal – save
+    document.getElementById('qa-edit-save').addEventListener('click', function () {
+        var qaId     = document.getElementById('qa-edit-id').value;
+        var question = document.getElementById('qa-edit-question').value.trim();
+        var answer   = document.getElementById('qa-edit-answer').value.trim();
+        if (!question || !answer) {
+            document.getElementById('qa-edit-status').textContent = 'Frage und Antwort erforderlich.';
+            return;
+        }
+        var btn = this;
+        btn.disabled = true;
+        document.getElementById('qa-edit-status').textContent = 'Wird gespeichert…';
+        apiPost('save-qa-pair', { id: qaId, question: question, answer: answer }, function (err, data) {
+            btn.disabled = false;
+            if (err || !data.success) {
+                document.getElementById('qa-edit-status').textContent = 'Fehler: ' + (err || data.error);
+                return;
+            }
+            // Update row in table
+            var row = document.querySelector('tr[data-qa-id="' + qaId + '"]');
+            if (row) {
+                var qEl = row.querySelector('.qa-question-text');
+                var aEl = row.querySelector('.qa-answer-text');
+                if (qEl) qEl.textContent = question;
+                if (aEl) aEl.innerHTML   = escHtml(answer).replace(/\n/g,'<br>');
+                var editBtn = row.querySelector('.btn-qa-edit');
+                if (editBtn) {
+                    editBtn.dataset.question = question;
+                    editBtn.dataset.answer   = answer;
+                }
+            }
+            document.getElementById('qa-edit-modal').style.display = 'none';
+        });
+    });
+
+    // Edit modal – cancel
+    document.getElementById('qa-edit-cancel').addEventListener('click', function () {
+        document.getElementById('qa-edit-modal').style.display = 'none';
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('qa-edit-modal').addEventListener('click', function (e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+
+})();
+
+
+</script>
+{% endblock %}

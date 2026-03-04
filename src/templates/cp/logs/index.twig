@@ -1,0 +1,157 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Chatbot Logs" %}
+{% set selectedSubnavItem = "logs" %}
+
+{% block actionButton %}
+    <form method="get" action="" class="flex" style="gap: 6px; align-items: center; flex-wrap: wrap">
+        <div class="input" style="min-width: 220px">
+            <input class="text fullwidth" type="text" name="search" value="{{ search }}" placeholder="Session-ID suchen…" autocomplete="off">
+        </div>
+        {% if enableRatings %}
+        <select name="rating" class="text" style="padding: 6px 10px; font-size: 14px">
+            <option value="" {% if not rating %}selected{% endif %}>Alle Bewertungen</option>
+            <option value="up" {% if rating == 'up' %}selected{% endif %}>👍 Positiv</option>
+            <option value="down" {% if rating == 'down' %}selected{% endif %}>👎 Negativ</option>
+        </select>
+        {% endif %}
+        <select name="confidence" class="text" style="padding: 6px 10px; font-size: 14px">
+            <option value="" {% if not confidence %}selected{% endif %}>Alle Konfidenz-Stufen</option>
+            <option value="low"    {% if confidence == 'low'    %}selected{% endif %}>🔴 Niedrig (&lt; 60%)</option>
+            <option value="medium" {% if confidence == 'medium' %}selected{% endif %}>🟡 Mittel (60–79%)</option>
+            <option value="high"   {% if confidence == 'high'   %}selected{% endif %}>🟢 Hoch (≥ 80%)</option>
+            <option value="none"   {% if confidence == 'none'   %}selected{% endif %}>⚪ Kein Kontext</option>
+        </select>
+        <button type="submit" class="btn">Suchen</button>
+        {% if search or rating or confidence %}
+            <a href="{{ url('chatagent/logs') }}" class="btn">Zurücksetzen</a>
+        {% endif %}
+    </form>
+{% endblock %}
+
+{% block content %}
+<div id="chatbot-logs">
+
+    {% if sessions | length %}
+
+        <table class="data fullwidth collapsible">
+            <thead>
+                <tr>
+                    <th scope="col">Session-ID</th>
+                    <th scope="col">Seite</th>
+                    <th scope="col" class="thin">Nachrichten</th>
+                    {% if enableRatings %}<th scope="col" class="thin" title="Bewertungen der Bot-Antworten" style="white-space: nowrap">{% include 'chatbot/icons/thumb-up.svg' with {size: 12} %} / {% include 'chatbot/icons/thumb-down.svg' with {size: 12} %}</th>{% endif %}
+                    <th scope="col" class="thin" title="Niedrigste Konfidenz in dieser Session (min. Score aller Bot-Antworten)" style="white-space: nowrap">Konfidenz</th>
+                    <th scope="col">IP-Adresse</th>
+                    <th scope="col">Datum</th>
+                    <th scope="col" class="thin"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in sessions %}
+                    {% set sessionRating = ratings[session.id] ?? {up: 0, down: 0} %}
+                    {% set minScore = confidences[session.id] ?? null %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('chatagent/logs/' ~ session.id) }}">
+                                <code>{{ session.sessionId | slice(0, 32) }}…</code>
+                            </a>
+                        </td>
+                        <td>
+                            {% if session.pageUrl %}
+                                <span class="light" title="{{ session.pageUrl }}">
+                                    {{ session.pageUrl | split('/') | last | slice(0, 50) ?: '/' }}
+                                </span>
+                            {% else %}
+                                <span class="light">–</span>
+                            {% endif %}
+                        </td>
+                        <td class="thin centeralign">
+                            <span class="status {% if session.messageCount > 0 %}green{% else %}grey{% endif %}"></span>
+                            {{ session.messageCount }}
+                        </td>
+                        {% if enableRatings %}
+                        <td class="thin centeralign">
+                            {% if sessionRating.up > 0 or sessionRating.down > 0 %}
+                                <span class="light">{{ sessionRating.up }}/{{ sessionRating.down }}</span>
+                            {% else %}
+                                <span class="light">–</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="thin centeralign">
+                            {% if minScore is not null %}
+                                {% if minScore >= 0.80 %}
+                                    <span class="conf-badge conf-high" title="Höchste Konfidenz in Session: {{ (minScore * 100) | round(1) }}%">🟢 {{ (minScore * 100) | round(0) }}%</span>
+                                {% elseif minScore >= 0.60 %}
+                                    <span class="conf-badge conf-medium" title="Niedrigste Konfidenz: {{ (minScore * 100) | round(1) }}%">🟡 {{ (minScore * 100) | round(0) }}%</span>
+                                {% else %}
+                                    <span class="conf-badge conf-low" title="Niedrigste Konfidenz: {{ (minScore * 100) | round(1) }}%">🔴 {{ (minScore * 100) | round(0) }}%</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="light" title="Kein Kontextfund">–</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <code class="light">{{ session.ipAddress ?? '–' }}</code>
+                        </td>
+                        <td>{{ session.dateCreated | date('d.m.Y H:i') }}</td>
+                        <td class="thin rightalign">
+                            <form method="post" onsubmit="return confirm('Session wirklich löschen?')">
+                                {{ csrfInput() }}
+                                <input type="hidden" name="action" value="chatbot/logs/delete">
+                                <input type="hidden" name="id" value="{{ session.id }}">
+                                <button type="submit" class="btn small">Löschen</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {# Pagination #}
+        {% if pages > 1 %}
+            <nav class="flex centeralign" style="margin-top: 1.5rem; gap: 4px; justify-content: center">
+                {% if currentPage > 1 %}
+                    <a href="{{ url('chatagent/logs', {page: currentPage - 1, search: search, rating: rating, confidence: confidence}) }}" class="btn">‹</a>
+                {% endif %}
+
+                {% for p in 1..pages %}
+                    {% if p == 1 or p == pages or (p >= currentPage - 2 and p <= currentPage + 2) %}
+                        <a href="{{ url('chatagent/logs', {page: p, search: search, rating: rating, confidence: confidence}) }}"
+                           class="btn{% if p == currentPage %} submit{% endif %}">{{ p }}</a>
+                    {% elseif p == currentPage - 3 or p == currentPage + 3 %}
+                        <span class="light" style="padding: 0 4px">…</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if currentPage < pages %}
+                    <a href="{{ url('chatagent/logs', {page: currentPage + 1, search: search, rating: rating, confidence: confidence}) }}" class="btn">›</a>
+                {% endif %}
+            </nav>
+        {% endif %}
+
+        <p class="light" style="margin-top: 0.75rem; text-align: center">
+            {{ total }} Session{{ total != 1 ? 'en' : '' }} gesamt
+        </p>
+
+    {% else %}
+
+        <div class="zilch">
+            <p>{% if search or rating or confidence %}Keine Sessions für die gewählten Filter gefunden.{% else %}Noch keine Gesprächs-Sessions vorhanden.{% endif %}</p>
+        </div>
+
+    {% endif %}
+
+</div>
+
+<style>
+.conf-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+</style>
+{% endblock %}
