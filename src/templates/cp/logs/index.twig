@@ -1,31 +1,31 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set title = "Chatbot Logs" %}
+{% set title = "Chat Logs"|t('chatagent') %}
 {% set selectedSubnavItem = "logs" %}
 
 {% block actionButton %}
     <form method="get" action="" class="flex" style="gap: 6px; align-items: center; flex-wrap: wrap">
         <div class="input" style="min-width: 220px">
-            <input class="text fullwidth" type="text" name="search" value="{{ search }}" placeholder="Session-ID suchen…" autocomplete="off">
+            <input class="text fullwidth" type="text" name="search" value="{{ search }}" placeholder="{{ "Search session ID…"|t('chatagent') }}" autocomplete="off">
         </div>
         {% if enableRatings %}
         <select name="rating" class="text" style="padding: 6px 10px; font-size: 14px">
-            <option value="" {% if not rating %}selected{% endif %}>Alle Bewertungen</option>
-            <option value="up" {% if rating == 'up' %}selected{% endif %}>👍 Positiv</option>
-            <option value="down" {% if rating == 'down' %}selected{% endif %}>👎 Negativ</option>
+            <option value="" {% if not rating %}selected{% endif %}>{{ "All ratings"|t('chatagent') }}</option>
+            <option value="up"   {% if rating == 'up'   %}selected{% endif %}>👍 {{ "Positive"|t('chatagent') }}</option>
+            <option value="down" {% if rating == 'down' %}selected{% endif %}>👎 {{ "Negative"|t('chatagent') }}</option>
         </select>
         {% endif %}
         <select name="confidence" class="text" style="padding: 6px 10px; font-size: 14px">
-            <option value="" {% if not confidence %}selected{% endif %}>Alle Konfidenz-Stufen</option>
-            <option value="low"    {% if confidence == 'low'    %}selected{% endif %}>🔴 Niedrig (&lt; 60%)</option>
-            <option value="medium" {% if confidence == 'medium' %}selected{% endif %}>🟡 Mittel (60–79%)</option>
-            <option value="high"   {% if confidence == 'high'   %}selected{% endif %}>🟢 Hoch (≥ 80%)</option>
-            <option value="none"   {% if confidence == 'none'   %}selected{% endif %}>⚪ Kein Kontext</option>
+            <option value=""       {% if not confidence          %}selected{% endif %}>{{ "All confidence levels"|t('chatagent') }}</option>
+            <option value="low"    {% if confidence == 'low'    %}selected{% endif %}>🔴 {{ "Low (< 60%)"|t('chatagent') }}</option>
+            <option value="medium" {% if confidence == 'medium' %}selected{% endif %}>🟡 {{ "Medium (60–79%)"|t('chatagent') }}</option>
+            <option value="high"   {% if confidence == 'high'   %}selected{% endif %}>🟢 {{ "High (≥ 80%)"|t('chatagent') }}</option>
+            <option value="none"   {% if confidence == 'none'   %}selected{% endif %}>⚪ {{ "No context"|t('chatagent') }}</option>
         </select>
-        <button type="submit" class="btn">Suchen</button>
+        <button type="submit" class="btn">{{ "Search"|t('chatagent') }}</button>
         {% if search or rating or confidence %}
-            <a href="{{ url('chatagent/logs') }}" class="btn">Zurücksetzen</a>
+            <a href="{{ url('chatagent/logs') }}" class="btn">{{ "Reset"|t('chatagent') }}</a>
         {% endif %}
     </form>
 {% endblock %}
@@ -38,13 +38,18 @@
         <table class="data fullwidth collapsible">
             <thead>
                 <tr>
-                    <th scope="col">Session-ID</th>
-                    <th scope="col">Seite</th>
-                    <th scope="col" class="thin">Nachrichten</th>
-                    {% if enableRatings %}<th scope="col" class="thin" title="Bewertungen der Bot-Antworten" style="white-space: nowrap">{% include 'chatbot/icons/thumb-up.svg' with {size: 12} %} / {% include 'chatbot/icons/thumb-down.svg' with {size: 12} %}</th>{% endif %}
-                    <th scope="col" class="thin" title="Niedrigste Konfidenz in dieser Session (min. Score aller Bot-Antworten)" style="white-space: nowrap">Konfidenz</th>
-                    <th scope="col">IP-Adresse</th>
-                    <th scope="col">Datum</th>
+                    <th scope="col">{{ "Session ID"|t('chatagent') }}</th>
+                    <th scope="col">{{ "Page"|t('chatagent') }}</th>
+                    <th scope="col" class="thin">{{ "Messages"|t('chatagent') }}</th>
+                    {% if enableRatings %}
+                    <th scope="col" class="thin" style="white-space: nowrap">
+                        {% include 'chatbot/icons/thumb-up.svg' with {size: 12} %} /
+                        {% include 'chatbot/icons/thumb-down.svg' with {size: 12} %}
+                    </th>
+                    {% endif %}
+                    <th scope="col" class="thin" style="white-space: nowrap">{{ "Confidence"|t('chatagent') }}</th>
+                    <th scope="col">{{ "IP address"|t('chatagent') }}</th>
+                    <th scope="col">{{ "Date"|t('chatagent') }}</th>
                     <th scope="col" class="thin"></th>
                 </tr>
             </thead>
@@ -83,14 +88,14 @@
                         <td class="thin centeralign">
                             {% if minScore is not null %}
                                 {% if minScore >= 0.80 %}
-                                    <span class="conf-badge conf-high" title="Höchste Konfidenz in Session: {{ (minScore * 100) | round(1) }}%">🟢 {{ (minScore * 100) | round(0) }}%</span>
+                                    <span class="conf-badge conf-high" title="{{ (minScore * 100)|round(1) }}%">🟢 {{ (minScore * 100)|round(0) }}%</span>
                                 {% elseif minScore >= 0.60 %}
-                                    <span class="conf-badge conf-medium" title="Niedrigste Konfidenz: {{ (minScore * 100) | round(1) }}%">🟡 {{ (minScore * 100) | round(0) }}%</span>
+                                    <span class="conf-badge conf-medium" title="{{ (minScore * 100)|round(1) }}%">🟡 {{ (minScore * 100)|round(0) }}%</span>
                                 {% else %}
-                                    <span class="conf-badge conf-low" title="Niedrigste Konfidenz: {{ (minScore * 100) | round(1) }}%">🔴 {{ (minScore * 100) | round(0) }}%</span>
+                                    <span class="conf-badge conf-low" title="{{ (minScore * 100)|round(1) }}%">🔴 {{ (minScore * 100)|round(0) }}%</span>
                                 {% endif %}
                             {% else %}
-                                <span class="light" title="Kein Kontextfund">–</span>
+                                <span class="light">–</span>
                             {% endif %}
                         </td>
                         <td>
@@ -98,11 +103,11 @@
                         </td>
                         <td>{{ session.dateCreated | date('d.m.Y H:i') }}</td>
                         <td class="thin rightalign">
-                            <form method="post" onsubmit="return confirm('Session wirklich löschen?')">
+                            <form method="post" onsubmit="return confirm('{{ "Really delete this session?"|t('chatagent') }}')">
                                 {{ csrfInput() }}
                                 <input type="hidden" name="action" value="chatagent/logs/delete">
                                 <input type="hidden" name="id" value="{{ session.id }}">
-                                <button type="submit" class="btn small">Löschen</button>
+                                <button type="submit" class="btn small">{{ "Delete"|t('chatagent') }}</button>
                             </form>
                         </td>
                     </tr>
@@ -133,13 +138,19 @@
         {% endif %}
 
         <p class="light" style="margin-top: 0.75rem; text-align: center">
-            {{ total }} Session{{ total != 1 ? 'en' : '' }} gesamt
+            {{ "{total} session(s) total"|t('chatagent', {total: total}) }}
         </p>
 
     {% else %}
 
         <div class="zilch">
-            <p>{% if search or rating or confidence %}Keine Sessions für die gewählten Filter gefunden.{% else %}Noch keine Gesprächs-Sessions vorhanden.{% endif %}</p>
+            <p>
+                {% if search or rating or confidence %}
+                    {{ "No sessions found for the selected filters."|t('chatagent') }}
+                {% else %}
+                    {{ "No conversation sessions yet."|t('chatagent') }}
+                {% endif %}
+            </p>
         </div>
 
     {% endif %}

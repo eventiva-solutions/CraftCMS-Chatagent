@@ -15,28 +15,32 @@ class DashboardController extends Controller
         if (!parent::beforeAction($action)) {
             return false;
         }
+
         $this->requireAdmin();
+
         return true;
     }
 
     /**
-     * GET chatbot  →  Dashboard Übersicht
+     * GET chatagent  →  Dashboard overview
      */
     public function actionIndex(): \yii\web\Response
     {
         $request = Craft::$app->getRequest();
-        $to   = $request->getQueryParam('to',   date('Y-m-d'));
-        $from = $request->getQueryParam('from', date('Y-m-d', strtotime('-6 days')));
+        $to      = $request->getQueryParam('to', date('Y-m-d'));
+        $from    = $request->getQueryParam('from', date('Y-m-d', strtotime('-6 days')));
 
-        $chatStats       = Chatagent::$instance->getLogsService()->getStatsForDateRange($from, $to);
-        $vectorStats     = Chatagent::$instance->getVectorService()->getStats();
-        $fileStats       = Chatagent::$instance->getVectorService()->getFileStats();
-        $suggestionStats = Chatagent::$instance->getLogsService()->getSuggestionStats($from, $to);
+        $plugin          = Chatagent::getInstance();
+        $chatStats       = $plugin->getLogsService()->getStatsForDateRange($from, $to);
+        $vectorStats     = $plugin->getVectorService()->getStats();
+        $fileStats       = $plugin->getVectorService()->getFileStats();
+        $suggestionStats = $plugin->getLogsService()->getSuggestionStats($from, $to);
+        $settings        = $plugin->getChatService()->getSettings();
 
-        // Flatten daily data into ordered chart arrays
         $chartLabels   = [];
         $chartSessions = [];
         $chartMessages = [];
+
         foreach ($chatStats['dailySessions'] as $date => $count) {
             $parts           = explode('-', $date);
             $chartLabels[]   = $parts[2] . '.' . $parts[1] . '.';
@@ -44,16 +48,14 @@ class DashboardController extends Controller
             $chartMessages[] = $chatStats['dailyMessages'][$date] ?? 0;
         }
 
-        $settings = Chatagent::$instance->getChatService()->getSettings();
-
         return $this->renderTemplate('chatbot/cp/dashboard/index', [
-            'title'         => 'Dashboard',
-            'chatStats'     => $chatStats,
-            'vectorStats'   => $vectorStats,
-            'fileStats'     => $fileStats,
-            'chartLabels'   => $chartLabels,
-            'chartSessions' => $chartSessions,
-            'chartMessages' => $chartMessages,
+            'title'           => Craft::t('chatagent', 'Dashboard'),
+            'chatStats'       => $chatStats,
+            'vectorStats'     => $vectorStats,
+            'fileStats'       => $fileStats,
+            'chartLabels'     => $chartLabels,
+            'chartSessions'   => $chartSessions,
+            'chartMessages'   => $chartMessages,
             'from'            => $from,
             'to'              => $to,
             'enableRatings'   => !empty($settings['enableRatings']),
@@ -62,20 +64,21 @@ class DashboardController extends Controller
     }
 
     /**
-     * GET chatbot/dashboard/stats  →  JSON für AJAX-Refresh
+     * GET chatagent/dashboard/stats  →  JSON for AJAX refresh
      */
     public function actionStats(): \yii\web\Response
     {
         $this->requireAcceptsJson();
 
         $request = Craft::$app->getRequest();
-        $from = $request->getParam('from', date('Y-m-d', strtotime('-6 days')));
-        $to   = $request->getParam('to',   date('Y-m-d'));
+        $from    = $request->getParam('from', date('Y-m-d', strtotime('-6 days')));
+        $to      = $request->getParam('to', date('Y-m-d'));
 
-        $chatStats       = Chatagent::$instance->getLogsService()->getStatsForDateRange($from, $to);
-        $vectorStats     = Chatagent::$instance->getVectorService()->getStats();
-        $fileStats       = Chatagent::$instance->getVectorService()->getFileStats();
-        $suggestionStats = Chatagent::$instance->getLogsService()->getSuggestionStats($from, $to);
+        $plugin          = Chatagent::getInstance();
+        $chatStats       = $plugin->getLogsService()->getStatsForDateRange($from, $to);
+        $vectorStats     = $plugin->getVectorService()->getStats();
+        $fileStats       = $plugin->getVectorService()->getFileStats();
+        $suggestionStats = $plugin->getLogsService()->getSuggestionStats($from, $to);
 
         return $this->asJson([
             'success'         => true,

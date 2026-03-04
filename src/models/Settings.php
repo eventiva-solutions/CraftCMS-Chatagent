@@ -2,7 +2,8 @@
 
 namespace eventiva\craftchatagent\models;
 
-use yii\base\Model;
+use Craft;
+use craft\base\Model;
 
 class Settings extends Model
 {
@@ -17,7 +18,7 @@ class Settings extends Model
     public bool $logConversations = true;
     public int $logRetentionDays = 90;
 
-    // RAG / KI fields
+    // RAG / AI fields
     public string $openaiModel = 'gpt-4o-mini';
     public string $embeddingModel = 'text-embedding-3-small';
     public array $trainingSections = [];
@@ -39,20 +40,20 @@ class Settings extends Model
     public function attributeLabels(): array
     {
         return [
-            'companyName' => 'Firmenname',
-            'logoText' => 'Logo-Text',
-            'primaryColor' => 'Primärfarbe',
-            'initialMessage' => 'Startnachricht',
-            'defaultTheme' => 'Standard-Theme',
-            'enabled' => 'Chatbot aktiviert',
-            'logConversations' => 'Gespräche protokollieren',
-            'logRetentionDays' => 'Log-Aufbewahrung (Tage, 0 = unbegrenzt)',
-            'openaiModel' => 'Chat-Modell',
-            'embeddingModel' => 'Embedding-Modell',
-            'trainingSections' => 'Trainings-Sections',
-            'autoTrainOnSave' => 'Auto-Training bei Entry-Speicherung',
-            'maxContextChunks' => 'Max. Kontext-Chunks',
-            'minSimilarityScore' => 'Mindest-Ähnlichkeit',
+            'companyName'       => Craft::t('chatagent', 'Company Name'),
+            'logoText'          => Craft::t('chatagent', 'Logo Text'),
+            'primaryColor'      => Craft::t('chatagent', 'Primary Color'),
+            'initialMessage'    => Craft::t('chatagent', 'Initial Message'),
+            'defaultTheme'      => Craft::t('chatagent', 'Default Theme'),
+            'enabled'           => Craft::t('chatagent', 'Chatbot Enabled'),
+            'logConversations'  => Craft::t('chatagent', 'Log Conversations'),
+            'logRetentionDays'  => Craft::t('chatagent', 'Log Retention (days, 0 = unlimited)'),
+            'openaiModel'       => Craft::t('chatagent', 'Chat Model'),
+            'embeddingModel'    => Craft::t('chatagent', 'Embedding Model'),
+            'trainingSections'  => Craft::t('chatagent', 'Training Sections'),
+            'autoTrainOnSave'   => Craft::t('chatagent', 'Auto-Train on Entry Save'),
+            'maxContextChunks'  => Craft::t('chatagent', 'Max. Context Chunks'),
+            'minSimilarityScore' => Craft::t('chatagent', 'Min. Similarity Score'),
         ];
     }
 }

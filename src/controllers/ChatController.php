@@ -5,27 +5,28 @@ namespace eventiva\craftchatagent\controllers;
 use Craft;
 use craft\web\Controller;
 use eventiva\craftchatagent\Chatagent;
+use eventiva\craftchatagent\records\ChatMessageRecord;
 
 class ChatController extends Controller
 {
     protected array|int|bool $allowAnonymous = ['message', 'rate'];
-    // CSRF ist für diese öffentlichen API-Endpoints nicht erforderlich –
-    // das Token im eingebetteten Widget-HTML kann nach Session-Ablauf ungültig werden.
+
+    // CSRF validation is disabled for these public API endpoints –
+    // the token embedded in the widget HTML may expire after a session timeout.
     public $enableCsrfValidation = false;
 
     /**
      * POST /chatbot/message
-     * Proxy between frontend and n8n webhook.
      */
     public function actionMessage(): \yii\web\Response
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
 
         if (!$settings['enabled']) {
-            return $this->asJson(['success' => false, 'error' => 'Chatbot ist deaktiviert.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Chatbot is disabled.')]);
         }
 
         $request = Craft::$app->getRequest();
@@ -35,12 +36,11 @@ class ChatController extends Controller
         $pageUrl    = $request->getBodyParam('pageUrl', '');
         $suggestion = $request->getBodyParam('suggestion', null);
 
-        // Sanitize inputs
         $sessionId = substr(strip_tags($sessionId), 0, 64);
         $chatInput = substr(strip_tags($chatInput), 0, 4000);
 
         if (empty($sessionId) || empty($chatInput)) {
-            return $this->asJson(['success' => false, 'error' => 'Ungültige Eingabe.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Invalid input.')]);
         }
 
         $context = [
@@ -50,13 +50,12 @@ class ChatController extends Controller
             'suggestion' => $suggestion ? substr(strip_tags((string)$suggestion), 0, 500) : null,
         ];
 
-        $result = Chatagent::$instance->getChatService()->processMessage($sessionId, $chatInput, $context);
+        $result = Chatagent::getInstance()->getChatService()->processMessage($sessionId, $chatInput, $context);
 
         if (!$result['success']) {
-            return $this->asJson(['success' => false, 'error' => $result['error'] ?? 'Fehler.']);
+            return $this->asJson(['success' => false, 'error' => $result['error'] ?? Craft::t('chatagent', 'An error occurred.')]);
         }
 
-        // Return in the format the frontend expects: [{"output": "..."}]
         return $this->asJson([[
             'output'    => $result['botResponse'],
             'debug'     => $result['debug'] ?? null,
@@ -66,16 +65,15 @@ class ChatController extends Controller
 
     /**
      * POST /chatbot/rate
-     * Save a thumbs up/down rating for a bot message.
      */
     public function actionRate(): \yii\web\Response
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
         if (empty($settings['enableRatings'])) {
-            return $this->asJson(['success' => false, 'error' => 'Bewertungen sind deaktiviert.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Ratings are disabled.')]);
         }
 
         $request   = Craft::$app->getRequest();
@@ -84,22 +82,21 @@ class ChatController extends Controller
         $rating    = (string)$request->getBodyParam('rating', '');
 
         if (!in_array($rating, ['up', 'down'], true) || $messageId <= 0) {
-            return $this->asJson(['success' => false, 'error' => 'Ungültige Parameter.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Invalid parameters.')]);
         }
 
-        $message = \eventiva\craftchatagent\records\ChatMessageRecord::findOne([
+        $message = ChatMessageRecord::findOne([
             'id'   => $messageId,
             'role' => 'bot',
         ]);
 
         if (!$message) {
-            return $this->asJson(['success' => false, 'error' => 'Nachricht nicht gefunden.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Message not found.')]);
         }
 
-        // Verify the message belongs to the given session
         $session = $message->getSession()->one();
         if (!$session || $session->sessionId !== $sessionId) {
-            return $this->asJson(['success' => false, 'error' => 'Session ungültig.']);
+            return $this->asJson(['success' => false, 'error' => Craft::t('chatagent', 'Invalid session.')]);
         }
 
         $message->rating      = $rating;

@@ -3,6 +3,7 @@
 namespace eventiva\craftchatagent\controllers;
 
 use Craft;
+use craft\records\Section;
 use craft\web\Controller;
 use eventiva\craftchatagent\Chatagent;
 
@@ -22,19 +23,18 @@ class LogsController extends Controller
     }
 
     /**
-     * GET chatbot
-     * Sessions overview with pagination.
+     * GET chatagent/logs
      */
     public function actionIndex(): \yii\web\Response
     {
-        $request = Craft::$app->getRequest();
+        $request    = Craft::$app->getRequest();
         $page       = (int)$request->getQueryParam('page', 1);
         $search     = $request->getQueryParam('search', '');
         $rating     = $request->getQueryParam('rating', '');
         $confidence = $request->getQueryParam('confidence', '');
 
-        $logsService   = Chatagent::$instance->getLogsService();
-        $settings      = Chatagent::$instance->getChatService()->getSettings();
+        $logsService   = Chatagent::getInstance()->getLogsService();
+        $settings      = Chatagent::getInstance()->getChatService()->getSettings();
         $enableRatings = !empty($settings['enableRatings']);
 
         $result = $logsService->getSessions($page, 25, $search, $enableRatings ? $rating : '', $confidence);
@@ -44,45 +44,41 @@ class LogsController extends Controller
         $confidences = $logsService->getSessionMinConfidences($sessionIds);
 
         return $this->renderTemplate('chatbot/cp/logs/index', array_merge($result, [
+            'title'         => Craft::t('chatagent', 'Chat Logs'),
             'search'        => $search,
             'rating'        => $rating,
             'confidence'    => $confidence,
             'ratings'       => $ratings,
             'confidences'   => $confidences,
             'enableRatings' => $enableRatings,
-            'title'         => 'Chatbot Logs',
         ]));
     }
 
     /**
-     * GET chatbot/logs/<id>
-     * Single session conversation view.
+     * GET chatagent/logs/<id>
      */
     public function actionSession(int $id): \yii\web\Response
     {
-        $logsService = Chatagent::$instance->getLogsService();
-        $session = $logsService->getSessionById($id);
+        $logsService = Chatagent::getInstance()->getLogsService();
+        $session     = $logsService->getSessionById($id);
 
         if (!$session) {
-            throw new \yii\web\NotFoundHttpException('Session nicht gefunden.');
+            throw new \yii\web\NotFoundHttpException(Craft::t('chatagent', 'Session not found.'));
         }
 
-        $messages = $logsService->getSessionMessages($id);
-
-        // Load message IDs already used as Q&A training source (cross-DB lookup)
-        $qaSourceMsgIds = Chatagent::$instance->getVectorService()->getQaSourceMsgIds();
+        $messages       = $logsService->getSessionMessages($id);
+        $qaSourceMsgIds = Chatagent::getInstance()->getVectorService()->getQaSourceMsgIds();
 
         return $this->renderTemplate('chatbot/cp/logs/_session', [
+            'title'          => 'Session #' . $id,
             'session'        => $session,
             'messages'       => $messages,
             'qaSourceMsgIds' => $qaSourceMsgIds,
-            'title'          => 'Session #' . $id,
         ]);
     }
 
     /**
-     * POST chatbot/logs/delete
-     * Delete a session.
+     * POST chatagent/logs/delete
      */
     public function actionDelete(): \yii\web\Response
     {
@@ -90,41 +86,39 @@ class LogsController extends Controller
 
         $id = (int)Craft::$app->getRequest()->getBodyParam('id');
 
-        if (Chatagent::$instance->getLogsService()->deleteSession($id)) {
-            Craft::$app->getSession()->setNotice('Session gelöscht.');
+        if (Chatagent::getInstance()->getLogsService()->deleteSession($id)) {
+            Craft::$app->getSession()->setNotice(Craft::t('chatagent', 'Session deleted.'));
         } else {
-            Craft::$app->getSession()->setError('Session konnte nicht gelöscht werden.');
+            Craft::$app->getSession()->setError(Craft::t('chatagent', 'Session could not be deleted.'));
         }
 
-        return $this->redirect('chatbot/logs');
+        return $this->redirect('chatagent/logs');
     }
 
     /**
-     * GET chatbot/settings
-     * Settings form.
+     * GET chatagent/settings
      */
     public function actionSettings(): \yii\web\Response
     {
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
 
         $logoAsset = null;
         if (!empty($settings['logoAssetId'])) {
             $logoAsset = Craft::$app->getAssets()->getAssetById((int)$settings['logoAssetId']);
         }
 
-        $allSections = \craft\records\Section::find()->orderBy(['name' => SORT_ASC])->all();
+        $allSections = Section::find()->orderBy(['name' => SORT_ASC])->all();
 
         return $this->renderTemplate('chatbot/cp/settings', [
+            'title'       => Craft::t('chatagent', 'Chatbot Settings'),
             'settings'    => $settings,
             'logoAsset'   => $logoAsset,
             'allSections' => $allSections,
-            'title'       => 'Chatbot Einstellungen',
         ]);
     }
 
     /**
-     * POST chatbot/settings/save
-     * Save settings.
+     * POST chatagent/settings/save
      */
     public function actionSaveSettings(): \yii\web\Response
     {
@@ -132,30 +126,29 @@ class LogsController extends Controller
 
         $request = Craft::$app->getRequest();
 
-        $enabled             = $request->getBodyParam('enabled');
-        $logConversations    = $request->getBodyParam('logConversations');
-        $autoTrainOnSave     = $request->getBodyParam('autoTrainOnSave');
-        $enableRatings       = $request->getBodyParam('enableRatings');
-        $suggestionsEnabled  = $request->getBodyParam('suggestionsEnabled');
+        $enabled            = $request->getBodyParam('enabled');
+        $logConversations   = $request->getBodyParam('logConversations');
+        $autoTrainOnSave    = $request->getBodyParam('autoTrainOnSave');
+        $enableRatings      = $request->getBodyParam('enableRatings');
+        $suggestionsEnabled = $request->getBodyParam('suggestionsEnabled');
 
         // elementSelectField sends IDs as array: logoAssetId[] = [123]
         $logoAssetIdRaw = $request->getBodyParam('logoAssetId');
-        $logoAssetId = 0;
+        $logoAssetId    = 0;
         if (is_array($logoAssetIdRaw) && !empty($logoAssetIdRaw)) {
             $logoAssetId = (int)$logoAssetIdRaw[0];
         } elseif ($logoAssetIdRaw) {
             $logoAssetId = (int)$logoAssetIdRaw;
         }
 
-        // trainingSections comes as array of handles
         $trainingSections = $request->getBodyParam('trainingSections', []);
         if (!is_array($trainingSections)) {
             $trainingSections = [];
         }
 
-        // suggestions: textarea with one suggestion per line
+        // Suggestions: one per line, empty lines ignored
         $suggestionsRaw = $request->getBodyParam('suggestions', '');
-        $suggestions = array_values(array_filter(array_map('trim', explode("\n", (string)$suggestionsRaw))));
+        $suggestions    = array_values(array_filter(array_map('trim', explode("\n", (string)$suggestionsRaw))));
 
         $settings = [
             'companyName'        => $request->getBodyParam('companyName', ''),
@@ -181,10 +174,10 @@ class LogsController extends Controller
             'minSimilarityScore' => (float)$request->getBodyParam('minSimilarityScore', 0.65),
         ];
 
-        if (Chatagent::$instance->getChatService()->saveSettings($settings)) {
-            Craft::$app->getSession()->setNotice('Einstellungen gespeichert.');
+        if (Chatagent::getInstance()->getChatService()->saveSettings($settings)) {
+            Craft::$app->getSession()->setNotice(Craft::t('chatagent', 'Settings saved.'));
         } else {
-            Craft::$app->getSession()->setError('Fehler beim Speichern.');
+            Craft::$app->getSession()->setError(Craft::t('chatagent', 'Error saving settings.'));
         }
 
         return $this->redirect('chatagent/settings');
