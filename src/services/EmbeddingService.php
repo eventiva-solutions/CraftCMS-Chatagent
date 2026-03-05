@@ -15,7 +15,7 @@ class EmbeddingService extends Component
      */
     public function embed(string $text): array
     {
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
         $apiKey   = $settings['openaiApiKey'] ?? '';
         $model    = $settings['embeddingModel'] ?? 'text-embedding-3-small';
 

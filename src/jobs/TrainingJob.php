@@ -22,7 +22,7 @@ class TrainingJob extends BaseJob
         }
 
         try {
-            $count = Chatagent::$instance->getTrainingService()->trainEntry($entry);
+            $count = Chatagent::getInstance()->getTrainingService()->trainEntry($entry);
             Craft::info("TrainingJob: Entry #{$this->entryId} ({$entry->title}) – {$count} Chunks indexiert.", __METHOD__);
         } catch (\Throwable $e) {
             Craft::error("TrainingJob: Entry #{$this->entryId} fehlgeschlagen: " . $e->getMessage(), __METHOD__);

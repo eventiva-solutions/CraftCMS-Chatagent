@@ -67,7 +67,7 @@ class ChatService extends Component
             return ['success' => false, 'error' => 'OpenAI API Key ist nicht konfiguriert.'];
         }
 
-        $logService = Chatagent::$instance->getLogsService();
+        $logService = Chatagent::getInstance()->getLogsService();
 
         // Find or create DB session
         $sessionRecord = null;
@@ -81,11 +81,11 @@ class ChatService extends Component
 
         try {
             // 1. Embed the user question
-            $embeddingService = Chatagent::$instance->getEmbeddingService();
+            $embeddingService = Chatagent::getInstance()->getEmbeddingService();
             $queryEmbedding   = $embeddingService->embed($chatInput);
 
             // 2. Find similar chunks
-            $vectorService = Chatagent::$instance->getVectorService();
+            $vectorService = Chatagent::getInstance()->getVectorService();
             $similarChunks = $vectorService->searchSimilar(
                 $queryEmbedding,
                 (int)($settings['maxContextChunks'] ?? 5),

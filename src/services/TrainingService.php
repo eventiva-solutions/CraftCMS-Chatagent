@@ -17,7 +17,7 @@ class TrainingService extends Component
      */
     public function trainAll(): array
     {
-        $settings = Chatagent::$instance->getChatService()->getSettings();
+        $settings = Chatagent::getInstance()->getChatService()->getSettings();
         $sections = $settings['trainingSections'] ?? [];
 
         $result = ['processed' => 0, 'chunks' => 0, 'errors' => []];
@@ -77,8 +77,8 @@ class TrainingService extends Component
             return 0;
         }
 
-        $embeddingService = Chatagent::$instance->getEmbeddingService();
-        $vectorService    = Chatagent::$instance->getVectorService();
+        $embeddingService = Chatagent::getInstance()->getEmbeddingService();
+        $vectorService    = Chatagent::getInstance()->getVectorService();
 
         $chunkTexts = $embeddingService->chunkText($text);
 
@@ -126,8 +126,8 @@ class TrainingService extends Component
             return 0;
         }
 
-        $embeddingService = Chatagent::$instance->getEmbeddingService();
-        $vectorService    = Chatagent::$instance->getVectorService();
+        $embeddingService = Chatagent::getInstance()->getEmbeddingService();
+        $vectorService    = Chatagent::getInstance()->getVectorService();
 
         $chunkTexts = $embeddingService->chunkText($text);
 

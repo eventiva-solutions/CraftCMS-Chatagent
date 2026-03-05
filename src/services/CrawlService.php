@@ -168,8 +168,8 @@ class CrawlService extends Component
      */
     public function crawlAndIndex(int $urlId, string $url): array
     {
-        $vectorService   = Chatagent::$instance->getVectorService();
-        $embeddingService = Chatagent::$instance->getEmbeddingService();
+        $vectorService   = Chatagent::getInstance()->getVectorService();
+        $embeddingService = Chatagent::getInstance()->getEmbeddingService();
 
         // Fetch HTML
         $html = $this->fetchUrl($url);
