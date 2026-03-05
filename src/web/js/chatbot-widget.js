@@ -194,6 +194,78 @@ class ChatbotWidget {
         }
     }
 
+    parseMarkdown(text) {
+        // Escape HTML entities first (to prevent XSS from raw HTML in response)
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // 1. Fenced code blocks (``` ... ```)
+        var codeBlocks = [];
+        text = text.replace(/```([^\n]*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+            var placeholder = '\x00CODE' + codeBlocks.length + '\x00';
+            codeBlocks.push('<pre><code' + (lang ? ' class="language-' + escapeHtml(lang.trim()) + '"' : '') + '>' + escapeHtml(code.trim()) + '</code></pre>');
+            return placeholder;
+        });
+
+        // 2. Inline code (`...`)
+        var inlineCodes = [];
+        text = text.replace(/`([^`\n]+)`/g, function(_, code) {
+            var placeholder = '\x00INLINE' + inlineCodes.length + '\x00';
+            inlineCodes.push('<code>' + escapeHtml(code) + '</code>');
+            return placeholder;
+        });
+
+        // 3. Escape remaining HTML
+        text = escapeHtml(text);
+
+        // 4. Headers
+        text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+        // 5. Bold + italic
+        text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+        text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+
+        // 6. Links
+        text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+        // 7. Lists (unordered then ordered) – process blocks
+        text = text.replace(/((?:^[ \t]*[-*+] .+\n?)+)/gm, function(block) {
+            var items = block.trim().split('\n').map(function(line) {
+                return '<li>' + line.replace(/^[ \t]*[-*+] /, '') + '</li>';
+            }).join('');
+            return '<ul>' + items + '</ul>\n';
+        });
+        text = text.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, function(block) {
+            var items = block.trim().split('\n').map(function(line) {
+                return '<li>' + line.replace(/^[ \t]*\d+\. /, '') + '</li>';
+            }).join('');
+            return '<ol>' + items + '</ol>\n';
+        });
+
+        // 8. Horizontal rules
+        text = text.replace(/^---+$/gm, '<hr>');
+
+        // 9. Paragraphs – split on blank lines, wrap non-block elements
+        var blockTags = /^<(h[1-6]|ul|ol|pre|hr|blockquote)/;
+        text = text.split(/\n{2,}/).map(function(block) {
+            block = block.trim();
+            if (!block) return '';
+            if (blockTags.test(block)) return block;
+            return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+        }).join('');
+
+        // 10. Restore code blocks & inline codes
+        inlineCodes.forEach(function(html, i) { text = text.replace('\x00INLINE' + i + '\x00', html); });
+        codeBlocks.forEach(function(html, i) { text = text.replace('\x00CODE' + i + '\x00', html); });
+
+        return text;
+    }
+
     addMessage(text, type = 'bot', messageId = null) {
         if (type === 'bot') {
             // Wrapper so the rating buttons sit outside the bubble
@@ -202,7 +274,7 @@ class ChatbotWidget {
 
             const messageDiv = document.createElement('div');
             messageDiv.className = 'chatbot-message bot';
-            messageDiv.innerHTML = text;
+            messageDiv.innerHTML = this.parseMarkdown(text);
             wrapperDiv.appendChild(messageDiv);
 
             if (messageId && this.config.enableRatings) {

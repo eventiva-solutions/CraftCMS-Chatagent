@@ -151,7 +151,17 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-width: 700px;
+    max-width: 680px;
+}
+.chatlog-msg {
+    display: flex;
+    flex-direction: column;
+}
+.chatlog-msg--user {
+    align-items: flex-end;
+}
+.chatlog-msg--bot {
+    align-items: flex-start;
 }
 .chatlog-meta {
     display: flex;
@@ -162,12 +172,11 @@
     flex-wrap: wrap;
 }
 .chatlog-bubble {
-    display: inline-block;
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 14px;
     line-height: 1.5;
-    max-width: 80%;
+    max-width: 75%;
     word-break: break-word;
 }
 .chatlog-msg--user .chatlog-bubble {
@@ -180,6 +189,35 @@
     color: #1F2937;
     border-bottom-left-radius: 4px;
 }
+/* Markdown in bot bubbles */
+.chatlog-bubble p { margin: 0; }
+.chatlog-bubble p + p { margin-top: 6px; }
+.chatlog-bubble ul, .chatlog-bubble ol { margin: 6px 0; padding-left: 18px; }
+.chatlog-bubble li { margin: 2px 0; }
+.chatlog-bubble strong, .chatlog-bubble b { font-weight: 600; }
+.chatlog-bubble em, .chatlog-bubble i { font-style: italic; }
+.chatlog-bubble h1, .chatlog-bubble h2, .chatlog-bubble h3 { font-weight: 600; margin: 8px 0 3px; }
+.chatlog-bubble h1 { font-size: 1.1em; }
+.chatlog-bubble h2 { font-size: 1.02em; }
+.chatlog-bubble h3 { font-size: 0.95em; }
+.chatlog-bubble hr { border: none; border-top: 1px solid #d1d5db; margin: 8px 0; }
+.chatlog-bubble a { color: #4f46e5; text-decoration: underline; }
+.chatlog-bubble code {
+    background: rgba(0,0,0,.07);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .875em;
+}
+.chatlog-bubble pre {
+    background: rgba(0,0,0,.06);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 6px 0;
+    overflow-x: auto;
+    font-size: .84em;
+}
+.chatlog-bubble pre code { background: none; padding: 0; border-radius: 0; white-space: pre; }
 .btn-use-as-qa {
     background: none;
     border: 1px solid #d0d5dd;
@@ -219,6 +257,59 @@
 </style>
 
 <script>
+/* ── Markdown renderer for bot bubbles ──────────────────────────── */
+(function () {
+    function escapeHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function parseMarkdown(text) {
+        var codeBlocks = [], inlineCodes = [];
+        text = text.replace(/```([^\n]*)\n?([\s\S]*?)```/g, function(_,lang,code){
+            var ph = '\x00CODE'+codeBlocks.length+'\x00';
+            codeBlocks.push('<pre><code>'+ escapeHtml(code.trim()) +'</code></pre>');
+            return ph;
+        });
+        text = text.replace(/`([^`\n]+)`/g, function(_,code){
+            var ph = '\x00INLINE'+inlineCodes.length+'\x00';
+            inlineCodes.push('<code>'+ escapeHtml(code) +'</code>');
+            return ph;
+        });
+        text = escapeHtml(text);
+        text = text.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+        text = text.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+        text = text.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+        text = text.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+        text = text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+        text = text.replace(/__(.+?)__/g,'<strong>$1</strong>');
+        text = text.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+        text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        text = text.replace(/((?:^[ \t]*[-*+] .+\n?)+)/gm, function(block){
+            var items = block.trim().split('\n').map(function(l){ return '<li>'+l.replace(/^[ \t]*[-*+] /,'')+  '</li>'; }).join('');
+            return '<ul>'+items+'</ul>\n';
+        });
+        text = text.replace(/((?:^[ \t]*\d+\. .+\n?)+)/gm, function(block){
+            var items = block.trim().split('\n').map(function(l){ return '<li>'+l.replace(/^[ \t]*\d+\. /,'')+'</li>'; }).join('');
+            return '<ol>'+items+'</ol>\n';
+        });
+        text = text.replace(/^---+$/gm,'<hr>');
+        var blockTags = /^<(h[1-6]|ul|ol|pre|hr)/;
+        text = text.split(/\n{2,}/).map(function(block){
+            block = block.trim();
+            if (!block) return '';
+            if (blockTags.test(block)) return block;
+            return '<p>'+block.replace(/\n/g,'<br>')+'</p>';
+        }).join('');
+        inlineCodes.forEach(function(h,i){ text = text.replace('\x00INLINE'+i+'\x00',h); });
+        codeBlocks.forEach(function(h,i){ text = text.replace('\x00CODE'+i+'\x00',h); });
+        return text;
+    }
+
+    document.querySelectorAll('.chatlog-msg--bot .chatlog-bubble').forEach(function(el){
+        el.innerHTML = parseMarkdown(el.textContent || '');
+    });
+})();
+
+/* ── Q&A Modal ──────────────────────────────────────────────────── */
 (function () {
     var csrfToken   = '{{ craft.app.request.csrfToken }}';
     var trainingUrl = '{{ cpUrl('chatagent/training') }}';
