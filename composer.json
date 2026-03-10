@@ -1,18 +1,18 @@
 {
   "name": "eventiva/craft-chatagent",
-  "description": "AI-powered chat agent for Craft CMS – context-aware support bot with vector search and training.",
+  "description": "Plugin name: Chatagent",
   "type": "craft-plugin",
   "license": "proprietary",
   "support": {
     "email": "support@eventiva.io",
-    "issues": "https://github.com/vxdy/craftcms-chatagent/issues",
-    "source": "https://github.com/vxdy/craftcms-chatagent",
-    "docs": "https://github.com/vxdy/craftcms-chatagent",
-    "rss": "https://github.com/vxdy/craftcms-chatagent/releases.atom"
+    "issues": "https://github.com/vxdy/craftcms-chatagent.git/issues?state=open",
+    "source": "https://github.com/vxdy/craftcms-chatagent.git",
+    "docs": "https://github.com/vxdy/craftcms-chatagent.git",
+    "rss": "https://github.com/vxdy/craftcms-chatagent.git/releases.atom"
   },
   "require": {
     "php": ">=8.2",
-    "craftcms/cms": "^5.9.0"
+    "craftcms/cms": "^5.5.0"
   },
   "require-dev": {
     "craftcms/ecs": "dev-main",
@@ -26,12 +26,8 @@
   "extra": {
     "handle": "chatagent",
     "name": "Chatagent",
-    "version": "1.0.0",
-    "schemaVersion": "1.0.0",
     "developer": "Eventiva",
-    "developerUrl": "https://eventiva.io",
-    "documentationUrl": "https://github.com/vxdy/craftcms-chatagent",
-    "changelogUrl": "https://raw.githubusercontent.com/vxdy/craftcms-chatagent/master/CHANGELOG.md",
+    "documentationUrl": "https://github.com/vxdy/craftcms-chatagent.git",
     "class": "eventiva\\craftchatagent\\Chatagent"
   },
   "scripts": {

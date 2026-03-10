@@ -1,6 +1,6 @@
 <?php
 /**
- * Chatagent plugin translations – English
+ * Chatagent plugin translations - English
  */
 return [
     // Plugin nav
@@ -74,7 +74,7 @@ return [
     'Q&A pair saved and indexed.'                                                  => 'Q&A pair saved and indexed.',
     'qaId is missing.'                                                             => 'qaId is missing.',
 
-    // CP templates – Dashboard
+    // CP templates - Dashboard
     'From'                        => 'From',
     'To'                          => 'To',
     'Apply'                       => 'Apply',
@@ -100,14 +100,14 @@ return [
     'File chunks'                 => 'File chunks',
     'Last file indexing'          => 'Last file indexing',
 
-    // CP templates – Logs
+    // CP templates - Logs
     'Search session ID…'          => 'Search session ID…',
     'All ratings'                 => 'All ratings',
     'Positive'                    => 'Positive',
     'Negative'                    => 'Negative',
     'All confidence levels'       => 'All confidence levels',
     'Low (< 60%)'                 => 'Low (< 60%)',
-    'Medium (60–79%)'             => 'Medium (60–79%)',
+    'Medium (60-79%)'             => 'Medium (60-79%)',
     'High (≥ 80%)'                => 'High (≥ 80%)',
     'No context'                  => 'No context',
     'Search'                      => 'Search',
@@ -123,7 +123,7 @@ return [
     'No sessions found for the selected filters.' => 'No sessions found for the selected filters.',
     'No conversation sessions yet.'               => 'No conversation sessions yet.',
 
-    // CP templates – Session detail
+    // CP templates - Session detail
     'Back'                        => 'Back',
     'Delete session'              => 'Delete session',
     'Really delete session?'      => 'Really delete session?',
@@ -144,7 +144,7 @@ return [
     'Used as Q&A training example' => 'Used as Q&A training example',
     '✓ Q&A Training'              => '✓ Q&A Training',
 
-    // CP templates – Settings
+    // CP templates - Settings
     'General'                     => 'General',
     'AI Configuration'            => 'AI Configuration',
     'Suggestions'                 => 'Suggestions',
@@ -159,13 +159,13 @@ return [
     'Light'                       => 'Light',
     'Dark'                        => 'Dark',
 
-    // CP templates – Training
+    // CP templates - Training
     'Craft Entries'               => 'Craft Entries',
     'Files'                       => 'Files',
     'URLs'                        => 'URLs',
     'Q&A Training'                => 'Q&A Training',
 
-    // CP templates – Settings (additional)
+    // CP templates - Settings (additional)
     'Logo background color'       => 'Logo background color',
     'Background color of the logo badge in the chat header.' => 'Background color of the logo badge in the chat header.',
     'Displayed in the chat window header.'   => 'Displayed in the chat window header.',
@@ -179,14 +179,14 @@ return [
     'Dimensions'                         => 'Dimensions',
     'Cost'                               => 'Cost',
     'Recommendation'                     => 'Recommendation',
-    'Ideal for most use cases – fast, affordable' => 'Ideal for most use cases – fast, affordable',
-    'Higher precision for complex texts – ~6× more expensive than small' => 'Higher precision for complex texts – ~6× more expensive than small',
-    'Older model – only use if already trained with it' => 'Older model – only use if already trained with it',
+    'Ideal for most use cases - fast, affordable' => 'Ideal for most use cases - fast, affordable',
+    'Higher precision for complex texts - ~6× more expensive than small' => 'Higher precision for complex texts - ~6× more expensive than small',
+    'Older model - only use if already trained with it' => 'Older model - only use if already trained with it',
     'After switching models, the entire index must be retrained as vectors are not compatible.' => 'After switching models, the entire index must be retrained as vectors are not compatible.',
     'First message from the bot when opening the chat.' => 'First message from the bot when opening the chat.',
     'Basic instructions for the AI assistant.' => 'Basic instructions for the AI assistant.',
     'Maximum number of similar text sections passed as context to the AI.' => 'Maximum number of similar text sections passed as context to the AI.',
-    'Threshold (0.00–1.00) for cosine similarity. Lower values return more results but may be less relevant.' => 'Threshold (0.00–1.00) for cosine similarity. Lower values return more results but may be less relevant.',
+    'Threshold (0.00-1.00) for cosine similarity. Lower values return more results but may be less relevant.' => 'Threshold (0.00-1.00) for cosine similarity. Lower values return more results but may be less relevant.',
     'Index Craft sections'               => 'Index Craft sections',
     'Select the sections whose content should be trained for the chatbot.' => 'Select the sections whose content should be trained for the chatbot.',
     'Automatically indexes an entry when it is saved in the CP.' => 'Automatically indexes an entry when it is saved in the CP.',

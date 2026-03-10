@@ -45,7 +45,7 @@ class CrawlService extends Component
 
     /**
      * Extract title and clean text from HTML using DOMDocument.
-     * Reliable for large pages – no regex backtracking issues.
+     * Reliable for large pages - no regex backtracking issues.
      *
      * @return array{title: string, text: string}
      */

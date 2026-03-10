@@ -11,7 +11,7 @@ class ChatController extends Controller
 {
     protected array|int|bool $allowAnonymous = ['message', 'rate'];
 
-    // CSRF validation is disabled for these public API endpoints –
+    // CSRF validation is disabled for these public API endpoints -
     // the token embedded in the widget HTML may expire after a session timeout.
     public $enableCsrfValidation = false;
 

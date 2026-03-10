@@ -55,7 +55,7 @@
                 {% if chatStats.avgResponseMs %}
                     {{ (chatStats.avgResponseMs / 1000)|round(1) }}s
                 {% else %}
-                    –
+                    -
                 {% endif %}
             </div>
             <div class="stat-label">{{ "Ø Response time"|t('chatagent') }}</div>
@@ -172,7 +172,7 @@
 
         <div class="pane stat-widget">
             <div class="stat-value" style="font-size: 1.4em">
-                {{ vectorStats.lastIndexed ? vectorStats.lastIndexed|date('d.m.Y') : '–' }}
+                {{ vectorStats.lastIndexed ? vectorStats.lastIndexed|date('d.m.Y') : '-' }}
             </div>
             <div class="stat-label">
                 {{ "Last entry training"|t('chatagent') }}
@@ -199,7 +199,7 @@
 
         <div class="pane stat-widget" style="grid-column: span 2">
             <div class="stat-value" style="font-size: 1.4em">
-                {{ fileStats.lastIndexed ? fileStats.lastIndexed|date('d.m.Y') : '–' }}
+                {{ fileStats.lastIndexed ? fileStats.lastIndexed|date('d.m.Y') : '-' }}
             </div>
             <div class="stat-label">
                 {{ "Last file indexing"|t('chatagent') }}
@@ -381,7 +381,7 @@
                 document.getElementById('stat-sessions').textContent = cs.sessions;
                 document.getElementById('stat-messages').textContent = cs.messages;
                 document.getElementById('stat-avgms').textContent =
-                    cs.avgResponseMs ? (cs.avgResponseMs / 1000).toFixed(1) + 's' : '–';
+                    cs.avgResponseMs ? (cs.avgResponseMs / 1000).toFixed(1) + 's' : '-';
 
                 if (enableRatings) {
                     document.getElementById('stat-thumbs-up').textContent   = cs.thumbsUp   || 0;

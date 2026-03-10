@@ -198,7 +198,7 @@ class TrainingService extends Component
                         }
                     }
                 } else {
-                    // Skip relational fields (Assets, Entries, etc.) – they return class name when cast
+                    // Skip relational fields (Assets, Entries, etc.) - they return class name when cast
                     if ($value instanceof \craft\elements\db\ElementQuery || $value instanceof \craft\db\Query) {
                         continue;
                     }

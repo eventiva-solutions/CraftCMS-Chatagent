@@ -1,6 +1,6 @@
 <?php
 /**
- * Chatagent plugin translations – Deutsch
+ * Chatagent plugin translations - Deutsch
  */
 return [
     // Plugin nav
@@ -74,7 +74,7 @@ return [
     'Q&A pair saved and indexed.'                                                  => 'Q&A-Paar gespeichert und indexiert.',
     'qaId is missing.'                                                             => 'qaId fehlt.',
 
-    // CP templates – Dashboard
+    // CP templates - Dashboard
     'From'                         => 'Von',
     'To'                           => 'Bis',
     'Apply'                        => 'Anwenden',
@@ -100,14 +100,14 @@ return [
     'File chunks'                  => 'Datei-Chunks',
     'Last file indexing'           => 'Letzte Datei-Indexierung',
 
-    // CP templates – Logs
+    // CP templates - Logs
     'Search session ID…'           => 'Session-ID suchen…',
     'All ratings'                  => 'Alle Bewertungen',
     'Positive'                     => 'Positiv',
     'Negative'                     => 'Negativ',
     'All confidence levels'        => 'Alle Konfidenz-Stufen',
     'Low (< 60%)'                  => 'Niedrig (< 60%)',
-    'Medium (60–79%)'              => 'Mittel (60–79%)',
+    'Medium (60-79%)'              => 'Mittel (60-79%)',
     'High (≥ 80%)'                 => 'Hoch (≥ 80%)',
     'No context'                   => 'Kein Kontext',
     'Search'                       => 'Suchen',
@@ -123,7 +123,7 @@ return [
     'No sessions found for the selected filters.' => 'Keine Sessions für die gewählten Filter gefunden.',
     'No conversation sessions yet.'               => 'Noch keine Gesprächs-Sessions vorhanden.',
 
-    // CP templates – Session detail
+    // CP templates - Session detail
     'Back'                          => '← Zurück',
     'Delete session'                => 'Session löschen',
     'Really delete session?'        => 'Session wirklich löschen?',
@@ -144,7 +144,7 @@ return [
     'Used as Q&A training example'  => 'Als Q&A-Trainingsbeispiel verwendet',
     '✓ Q&A Training'                => '✓ Q&A Training',
 
-    // CP templates – Settings
+    // CP templates - Settings
     'General'                       => 'Allgemein',
     'AI Configuration'              => 'KI-Konfiguration',
     'Suggestions'                   => 'Vorschläge',
@@ -159,13 +159,13 @@ return [
     'Light'                         => 'Hell',
     'Dark'                          => 'Dunkel',
 
-    // CP templates – Training
+    // CP templates - Training
     'Craft Entries'               => 'Craft Entries',
     'Files'                       => 'Dateien',
     'URLs'                        => 'URLs',
     'Q&A Training'                => 'Q&A Training',
 
-    // CP templates – Settings (additional)
+    // CP templates - Settings (additional)
     'Logo background color'       => 'Logo-Hintergrundfarbe',
     'Background color of the logo badge in the chat header.' => 'Hintergrundfarbe des Logo-Badges im Chat-Header.',
     'Displayed in the chat window header.'   => 'Wird im Header des Chat-Fensters angezeigt.',
@@ -179,14 +179,14 @@ return [
     'Dimensions'                         => 'Dimensionen',
     'Cost'                               => 'Kosten',
     'Recommendation'                     => 'Empfehlung',
-    'Ideal for most use cases – fast, affordable' => 'Ideal für die meisten Anwendungsfälle – schnell, günstig',
-    'Higher precision for complex texts – ~6× more expensive than small' => 'Höhere Präzision bei komplexen Texten – ca. 6× teurer als small',
-    'Older model – only use if already trained with it' => 'Älteres Modell – nur verwenden wenn bereits damit trainiert wurde',
+    'Ideal for most use cases - fast, affordable' => 'Ideal für die meisten Anwendungsfälle - schnell, günstig',
+    'Higher precision for complex texts - ~6× more expensive than small' => 'Höhere Präzision bei komplexen Texten - ca. 6× teurer als small',
+    'Older model - only use if already trained with it' => 'Älteres Modell - nur verwenden wenn bereits damit trainiert wurde',
     'After switching models, the entire index must be retrained as vectors are not compatible.' => 'Nach einem Wechsel des Modells muss der gesamte Index neu trainiert werden, da die Vektoren nicht kompatibel sind.',
     'First message from the bot when opening the chat.' => 'Erste Nachricht des Bots beim Öffnen des Chats.',
     'Basic instructions for the AI assistant.' => 'Grundlegende Anweisungen für den KI-Assistenten.',
     'Maximum number of similar text sections passed as context to the AI.' => 'Wie viele ähnliche Textabschnitte maximal als Kontext an die KI übergeben werden.',
-    'Threshold (0.00–1.00) for cosine similarity. Lower values return more results but may be less relevant.' => 'Schwellenwert (0.00–1.00) für die Cosine Similarity. Niedrigere Werte liefern mehr, aber ggf. weniger relevante Ergebnisse.',
+    'Threshold (0.00-1.00) for cosine similarity. Lower values return more results but may be less relevant.' => 'Schwellenwert (0.00-1.00) für die Cosine Similarity. Niedrigere Werte liefern mehr, aber ggf. weniger relevante Ergebnisse.',
     'Index Craft sections'               => 'Craft-Sections indexieren',
     'Select the sections whose content should be trained for the chatbot.' => 'Wähle die Sections aus, deren Inhalte für den Chatbot trainiert werden sollen.',
     'Automatically indexes an entry when it is saved in the CP.' => 'Indexiert eine Entry automatisch, wenn sie im CP gespeichert wird.',
