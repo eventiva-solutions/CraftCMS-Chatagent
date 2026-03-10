@@ -18,14 +18,6 @@
 
 Go to the Plugin Store in your project's Control Panel and search for **"ChatAgent"**. Then press **Install**.
 
-#### With Composer
-
-```bash
-cd /path/to/my-project.test
-composer require eventiva/craft-chatagent
-./craft plugin/install chatagent
-```
-
 ---
 
 ## Features at a Glance
